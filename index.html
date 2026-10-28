@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>活过三十天 · 生存模拟</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231a1a1f'/%3E%3Ccircle cx='12' cy='13' r='6' fill='%23e8c46a'/%3E%3Cpath d='M12 6l2 3h-4z' fill='%231a1a1f'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#141419; --panel:#1d1d24; --panel2:#24242d; --line:#2f2f3a;
+  --tx:#e8e8ee; --mut:#9a9aa5; --acc:#e8c46a; --acc2:#7fb069;
+  --bad:#c96a5a; --good:#7fb069; --warn:#d6a24c; --pill:#2b2b35;
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--tx);
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  overflow:hidden;
+}
+.wrap{height:100vh;display:flex;flex-direction:column;max-width:1000px;margin:0 auto}
+header{padding:12px 16px 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+header h1{font-size:15px;font-weight:600;letter-spacing:.5px;color:var(--acc)}
+header .sub{font-size:12px;color:var(--mut)}
+header .phase{margin-left:auto;font-size:12px;color:var(--mut)}
+header .phase b{color:var(--tx);font-size:13px}
+.daybar{height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+.daybar i{display:block;height:100%;background:var(--acc);transition:width .4s}
+.scroll{flex:1;overflow-y:auto;padding:14px 16px 90px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+@media(min-width:640px){.stats{grid-template-columns:repeat(3,1fr)}}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+.stat .t{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-bottom:6px}
+.stat .t b{color:var(--tx)}
+.bar{height:7px;background:var(--pill);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;transition:width .35s}
+.scene{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;position:relative;margin-bottom:12px;min-height:150px}
+.scene .moon{position:absolute;top:16px;right:26px;width:26px;height:26px;border-radius:50%;background:#e6e2cf;box-shadow:0 0 18px 4px rgba(230,226,207,.25)}
+.scene .sun{position:absolute;top:18px;right:30px;width:30px;height:30px;border-radius:50%;background:#f0c06a;box-shadow:0 0 22px 6px rgba(240,192,106,.3)}
+.scene .hint{position:absolute;top:10px;left:12px;font-size:11px;color:var(--mut)}
+.person{position:absolute;left:50%;bottom:34%;transform:translateX(-50%);width:56px;height:76px}
+.person svg{width:100%;height:100%;display:block}
+.thought{position:absolute;bottom:calc(34% + 82px);left:50%;transform:translateX(-50%);background:#11111a;border:1px solid var(--line);color:var(--tx);font-size:12px;padding:6px 10px;border-radius:8px;white-space:nowrap;opacity:0;transition:opacity .3s}
+.thought.show{opacity:1}
+.thought:after{content:"";position:absolute;top:100%;left:50%;margin-left:-5px;border:5px solid transparent;border-top-color:var(--line)}
+h2{font-size:13px;color:var(--mut);margin:14px 0 8px;font-weight:600}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(min-width:640px){.actions{grid-template-columns:repeat(3,1fr)}}
+.act{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:10px 11px;cursor:pointer;transition:transform .08s,border-color .2s;text-align:left}
+.act:active{transform:scale(.98)}
+.act:hover{border-color:var(--acc)}
+.act .n{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.act .n svg{width:15px;height:15px;flex:none}
+.act .e{font-size:11px;color:var(--mut);line-height:1.4}
+.log{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin-top:12px;padding:10px 12px}
+.log .lines{font-size:12px;color:var(--mut);line-height:1.55;max-height:130px;overflow-y:auto}
+.log .lines .l{display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.log .lines .l:last-child{border-bottom:none}
+.log .lines .t{color:var(--acc);flex:none}
+.log .lines .dmg{color:var(--bad)}
+.log .lines .up{color:var(--good)}
+.overlay{position:fixed;inset:0;background:rgba(10,10,14,.86);display:none;align-items:center;justify-content:center;padding:24px;z-index:10}
+.overlay.show{display:flex}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:360px;width:100%;padding:22px;text-align:center}
+.card h2{color:var(--acc);font-size:17px;margin:0 0 10px}
+.card p{color:var(--mut);font-size:13px;line-height:1.6;margin-bottom:8px}
+.card .score{display:flex;justify-content:space-around;margin:14px 0;font-size:12px;color:var(--mut)}
+.card .score b{color:var(--tx);display:block;font-size:16px;margin-top:2px}
+.card button{margin-top:8px;background:var(--acc);color:#141419;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer}
+.legend{font-size:11px;color:var(--mut);margin-top:10px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>活过三十天</h1>
+    <span class="sub">生存模拟</span>
+    <span class="phase">第 <b id="day">1</b>/30 天 · <span id="slot">清晨</span></span>
+  </header>
+  <div class="daybar"><i id="dayfill" style="width:3.33%"></i></div>
+  <div class="scroll">
+    <div class="stats">
+      <div class="stat"><div class="t"><span>饱腹</span><b id="v-hunger">62</b></div><div class="bar"><i id="b-hunger" style="width:62%;background:var(--acc2)"></i></div></div>
+      <div class="stat"><div class="t"><span>精力</span><b id="v-energy">78</b></div><div class="bar"><i id="b-energy" style="width:78%;background:var(--acc)"></i></div></div>
+      <div class="stat"><div class="t"><span>健康</span><b id="v-health">58</b></div><div class="bar"><i id="b-health" style="width:58%;background:var(--acc2)"></i></div></div>
+      <div class="stat"><div class="t"><span>金钱</span><b id="v-money">60</b></div><div class="bar"><i id="b-money" style="width:10%;background:#8fb0c9"></i></div></div>
+      <div class="stat"><div class="t"><span>压力</span><b id="v-stress">22</b></div><div class="bar"><i id="b-stress" style="width:22%;background:var(--warn)"></i></div></div>
+      <div class="stat"><div class="t"><span>作品进度</span><b id="v-work">0</b></div><div class="bar"><i id="b-work" style="width:0%;background:#b08fcf"></i></div></div>
+    </div>
+    <div class="scene">
+      <span class="hint" id="scenetxt">清晨 · 新的一天</span>
+      <div id="skyicon" class="sun"></div>
+      <div class="person" id="person"></div>
+      <div class="thought" id="thought"></div>
+    </div>
+    <h2>这一个时段，做什么？</h2>
+    <div class="actions" id="actions"></div>
+    <div class="log">
+      <h2 style="margin-top:0">日志</h2>
+      <div class="lines" id="log"></div>
+    </div>
+    <div class="legend">规则：饱腹 / 精力 / 健康降到 0 会倒下。深夜不睡觉会熬夜，第二天垮得很快。饿着跑单有低血糖风险。钱一直见底，心态会崩。活过第 30 天结算。</div>
+  </div>
+</div>
+<div class="overlay" id="overlay">
+  <div class="card">
+    <h2 id="ovtitle">结束</h2>
+    <p id="ovtext"></p>
+    <div class="score">
+      <div>存活天数<b id="s-day">0</b></div>
+      <div>攒下金钱<b id="s-money">0</b></div>
+      <div>熬夜次数<b id="s-night">0</b></div>
+    </div>
+    <button onclick="location.reload()">再活一次</button>
+  </div>
+</div>
+<script>
+"use strict";
+const SLOTS=["清晨","上午","下午","傍晚","深夜"];
+const GAME_DAYS=30;
+const S={hunger:62, energy:78, health:58, stress:22, money:60, work:0, day:1, slot:0, nightCount:0, end:false};
+const ACTIONS=[
+  {id:"run", name:"跑单", cost:"+52元 · 耗精力/饱腹 · 加压力", fn:"doRun", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.2"/><path d="M6.5 20c.8-3.5 3-5.5 5.5-5.5s4.7 2 5.5 5.5"/></svg>'},
+  {id:"eat", name:"吃一顿", cost:"-12元 · 饱腹+ · 健康+", fn:"doEat", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 4v6a2 2 0 004 0V4"/><path d="M11 4v6a2 2 0 004 0V4"/><path d="M15 4v14h2V4"/></svg>'},
+  {id:"sleep", name:"睡觉", cost:"回精力 · 耗饱腹", fn:"doSleep", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h16"/><path d="M6 9l-1 3 1 3"/><path d="M18 9l1 3-1 3"/></svg>'},
+  {id:"rest", name:"休息", cost:"降压力 · 略耗精力", fn:"doRest", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg>'},
+  {id:"doc", name:"看医生", cost:"-45元 · 健康+", fn:"doDoc", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3h8l3 3v15H5V6z"/><path d="M9 12h6M12 9v6"/></svg>'},
+  {id:"work", name:"做内容", cost:"作品+ · 耗精力/饱腹", fn:"doWork", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 9l4 4 3-3"/></svg>'}
+];
+const $=id=>document.getElementById(id);
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const log=(msg,cls)=>{const d=document.createElement('div');d.className='l';d.innerHTML='<span class="t">D'+S.day+'·'+SLOTS[S.slot]+'</span><span>'+(cls?('<span class="'+cls+'">'+msg+'</span>'):msg)+'</span>';const box=$('log');box.prepend(d);while(box.children.length>8)box.lastChild.remove();};
+function moneyPct(){return clamp(Math.round(S.money/200*100),2,100);}
+function render(){
+  $('day').textContent=S.day; $('slot').textContent=SLOTS[S.slot];
+  $('dayfill').style.width=(S.day/GAME_DAYS*100)+'%';
+  $('v-hunger').textContent=S.hunger;$('b-hunger').style.width=S.hunger+'%';
+  $('b-hunger').style.background=S.hunger<25?'var(--bad)':S.hunger<50?'var(--warn)':'var(--acc2)';
+  $('v-energy').textContent=S.energy;$('b-energy').style.width=S.energy+'%';
+  $('b-energy').style.background=S.energy<25?'var(--bad)':S.energy<50?'var(--warn)':'var(--acc)';
+  $('v-health').textContent=S.health;$('b-health').style.width=S.health+'%';
+  $('b-health').style.background=S.health<30?'var(--bad)':S.health<55?'var(--warn)':'var(--acc2)';
+  $('v-money').textContent=S.money;$('b-money').style.width=moneyPct()+'%';
+  $('b-money').style.background=S.money<40?'var(--bad)':'#8fb0c9';
+  $('v-stress').textContent=S.stress;$('b-stress').style.width=S.stress+'%';
+  $('b-stress').style.background=S.stress>70?'var(--bad)':'var(--warn)';
+  $('v-work').textContent=S.work;$('b-work').style.width=S.work+'%';
+  $('scenetxt').textContent=SLOTS[S.slot]+(S.day===1&&S.slot===0?' · 新的一天':' · 第 '+S.day+' 天');
+  const sky=$('skyicon'); sky.className=(S.slot===4||S.slot===0||S.slot===3)?'moon':'sun';
+  renderPerson();
+}
+function renderPerson(){
+  const hurt=S.health<35, tired=S.energy<25, broke=S.money<40;
+  const mood=hurt?'hurt':(tired?'tired':(broke?'worried':'ok'));
+  const body=hurt?'#b07a66':'#d9a06b';
+  const face=mood==='ok'
+    ? '<path d="M5 19c1-1.4 2.6-2 4-2s3 .6 4 2" fill="none" stroke="#3a2430" stroke-width="1.4" stroke-linecap="round"/>'
+    : mood==='tired'
+    ? '<path d="M5 18.5h8" stroke="#3a2430" stroke-width="1.4" stroke-linecap="round"/>'
+    : '<path d="M6 21c2.6-1.6 5.4-1.6 8 0" fill="none" stroke="#3a2430" stroke-width="1.4" stroke-linecap="round"/>';
+  const eyes=mood==='tired'
+    ? '<path d="M6 11l3 0M10 11l3 0" stroke="#3a2430" stroke-width="1.3" stroke-linecap="round"/>'
+    : '<circle cx="7.5" cy="10.5" r="1.2" fill="#3a2430"/><circle cx="12.5" cy="10.5" r="1.2" fill="#3a2430"/>';
+  $('person').innerHTML='<svg viewBox="0 0 20 28">'
+    +'<circle cx="10" cy="6.5" r="4.6" fill="'+body+'"/>'
+    +'<path d="M2.5 27V18c0-3 3.2-5.2 7.5-5.2s7.5 2.2 7.5 5.2v9" fill="'+body+'"/>'
+    +'<path d="M2.5 20l-1.6 3M17.5 20l1.6 3" stroke="#8a5a40" stroke-width="1.2"/>'
+    +eyes+face+'</svg>';
+}
+function speak(t){const el=$('thought');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1600);}
+function checkDeath(){
+  if(S.end)return;
+  if(S.hunger<=0){S.hunger=0;S.end=true;log('饱腹见底，倒下了','dmg');speak('撑不住了…');endGame('饿垮了','饥饿到头，身体先撑不住了。第 '+S.day+' 天。');return;}
+  if(S.energy<=0){S.energy=0;S.end=true;log('精力耗尽，倒下了','dmg');speak('实在走不动了…');endGame('累垮了','连续透支，再也站不起来。第 '+S.day+' 天。');return;}
+  if(S.health<=0){S.health=0;S.end=true;log('健康归零，倒下了','dmg');speak('身体在报警…');endGame('身体垮了','长期透支，健康被自己耗光了。第 '+S.day+' 天。');return;}
+}
+function endGame(title,text){
+  S.end=true;
+  $('ovtitle').textContent=title; $('ovtext').textContent=text;
+  $('s-day').textContent=S.day; $('s-money').textContent=S.money; $('s-night').textContent=S.nightCount;
+  $('overlay').classList.add('show');
+}
+function finish(win){
+  S.end=true;
+  const verdict=win?(S.money>=120?'活得还行，攒下了'+S.money+'块。':(S.health>=60?'钱不多，但身体没垮，这已经是赢了。':'勉强活着，身体在透支边缘。')):'';
+  let rating;
+  if(S.health>=70&&S.money>=100)rating='稳扎稳打 · 作息和口袋都守住了';
+  else if(S.health>=50)rating='熬过来了 · 健康还行，但可以更好';
+  else rating='伤痕累累 · 活着，但代价太大';
+  $('ovtitle').textContent=win?('活过第 30 天 · '+rating):'结局';
+  $('ovtext').textContent=win?('三十天，你靠着一次次跑单活了下来。攒下 '+S.money+' 块，熬了 '+S.nightCount+' 个夜。'+verdict):verdict;
+  $('s-day').textContent=GAME_DAYS; $('s-money').textContent=S.money; $('s-night').textContent=S.nightCount;
+  $('overlay').classList.add('show');
+}
+function advance(){
+  if(S.slot===4 && S.nightAction!=='sleep'){S.nightTmp++; S.nightCount++; log('深夜还在硬撑，熬了个夜','dmg');}
+  S.slot++;
+  if(S.slot>=5){
+    S.slot=0; S.day++;
+    if(S.nightTmp>0){S.energy-=Math.min(28,25+5*S.nightTmp);S.health-=6*S.nightTmp;S.stress+=12*S.nightTmp;log('昨晚熬夜，第二天头晕眼花（精力-、健康-）','dmg');speak('又熬夜了，身体在记这笔账…');}
+    S.nightTmp=0;
+    S.hunger-=6; S.energy-=5;
+    if(S.hunger<=20){S.health-=4;log('吃不上饭，体力在流失','dmg');}
+    if(S.money<=0){S.stress+=10;log('钱包见底，压力上来了','dmg');}
+    if(S.health<30)log('身体状况很差，该去看医生了','dmg');
+    if(S.day>GAME_DAYS){finish(true);return;}
+  }
+  checkDeath();
+  render();
+}
+S.nightTmp=0;
+function doRun(){
+  S.money+=52; S.energy-=20; S.hunger-=17; S.stress+=12; S.health-=2;
+  log('跑单，进账 52 元','up');
+  if(S.hunger<=20){S.health-=14;log('饿着跑单，一阵晕眩（低血糖）','dmg');speak('眼前发黑…');}
+  else if(Math.random()<0.15){S.health-=5;log('风大路滑，摔了一跤','dmg');}
+  S.nightAction='run'; advance();
+}
+function doEat(){
+  if(S.money<12){log('钱不够吃这顿','dmg');speak('连饭都吃不起…');return;}
+  S.money-=12; S.hunger+=40; S.health+=4; S.stress-=5;
+  S.hunger=clamp(S.hunger,0,100);
+  log('吃了顿热乎的，饱腹+','up');
+  S.nightAction='eat'; advance();
+}
+function doSleep(){
+  const night=(S.slot===4); const gain=night?60:35;
+  S.nightAction='sleep';
+  S.energy+=gain; S.energy=clamp(S.energy,0,100);
+  S.hunger-=22; S.stress-=8; S.health+=4; S.health=clamp(S.health,0,100);
+  log(night?'睡了一整夜，精力+':'补了个觉，精力+'+(S.energy),'up');
+  if(!night && S.energy<70)log('白天补觉，晚上更难睡着','dmg');
+  advance();
+}
+function doRest(){
+  S.stress-=14; S.energy-=7;
+  log('坐了一会儿，压力-','up');
+  if(S.stress>60)log('心里乱，休息也歇不踏实','dmg');
+  S.nightAction='rest'; advance();
+}
+function doDoc(){
+  if(S.money<45){log('钱不够看病','dmg');speak('连医生都看不上…');return;}
+  S.money-=45; S.health+=34; S.stress-=8; S.health=clamp(S.health,0,100);
+  log('看了医生，健康+','up');
+  S.nightAction='doc'; advance();
+}
+function doWork(){
+  S.work+=26; S.energy-=16; S.hunger-=9;
+  if(S.work>=100){S.work=0;S.money+=200;log('作品上线，进账 200 元','up');speak('作品终于上线了');}
+  else log('做了一版内容，进度+26','up');
+  S.nightAction='work'; advance();
+}
+function renderActions(){
+  const box=$('actions'); box.innerHTML='';
+  ACTIONS.forEach(a=>{
+    const d=document.createElement('div'); d.className='act';
+    d.innerHTML='<div class="n">'+a.icon+''+a.name+'</div><div class="e">'+a.cost+'</div>';
+    d.onclick=()=>{ if(S.end)return; window[a.fn](); renderActions(); };
+    box.appendChild(d);
+  });
+}
+renderActions();
+render();
+</script>
+</body>
+</html>
