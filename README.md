@@ -5,7 +5,7 @@
 
 - 在线试玩：<https://compassscout.github.io/survival-days/>
 - 仓库地址：<https://github.com/compassscout/survival-days>
-- 当前版本：`1.0.0-3d`
+- 当前版本：`1.1.0-3d`（模块化重构，玩法数值不变）
 
 ---
 
@@ -17,7 +17,7 @@
 
 ## 玩法
 
-每天分成 **5 个时段**（清晨 → 上午 → 下午 → 傍晚 → 深夜），每个时段从 **6 个动作**里选 1 个执行。活过第 30 天触发结算，根据攒下的钱、健康、熬夜次数给出最终评价。
+每天分成 **5 个时段**（清晨 → 上午 → 下午 → 傍晚 → 深夜），每个时段从 **6 个动作**里选 1 个执行。活过第 30 天触发结算，根据攒下的钱、健康、熬夜次数给出最终评价。进度自动存档（localStorage），关掉页面也能继续。
 
 ## 状态系统（6 项）
 
@@ -51,7 +51,49 @@
 
 ## 本地运行
 
-下载本仓库，`index.html` 与 `three.min.js` 保持在同一目录，双击 `index.html` 即可。
+下载本仓库，双击 `index.html` 即可（纯静态、无 ES Modules，`file://` 直接跑）。
+
+## 目录结构
+
+```
+survival-days/
+├── index.html              # 页面骨架（DOM 结构 + script 加载顺序）
+├── css/
+│   └── style.css           # 全部样式（HUD / 弹窗 / 响应式）
+├── js/
+│   ├── util.js             # $ / clamp 等小工具（最先加载）
+│   ├── config/             # ★ 数值配置层：改平衡只动这里
+│   │   ├── constants.js    #   时段、通关天数、机位、昼夜调色板
+│   │   └── balance.js      #   六个动作的收益代价、商店商品、价格
+│   ├── core/               # 逻辑层（不关心画面）
+│   │   ├── state.js        #   游戏状态 + localStorage 自动存档
+│   │   └── engine.js       #   回合推进、随机事件、生死判定
+│   ├── scene/              # 3D 层（Three.js）
+│   │   ├── world.js        #   城市建模、灯光天气、渲染循环、机位
+│   │   └── character.js    #   主角 + 电驴、骑行/睡觉等动画
+│   ├── ui/                 # 表现层（DOM/HUD）
+│   │   ├── hud.js          #   状态栏、日志、气泡台词
+│   │   ├── actions.js      #   底部动作按钮栏
+│   │   ├── shop.js         #   商店弹窗
+│   │   └── overlay.js      #   结算弹窗
+│   └── main.js             # 启动入口（最后加载）
+├── vendor/
+│   └── three.min.js        # Three.js r128（本地内置，零外部请求）
+└── assets/                 # 以后放 .glb 模型 / 贴图 / 音效
+```
+
+模块间通过全局命名空间 `window.GAME` 通信：`GAME.cfg`（配置）、`GAME.S`（状态）、`GAME.engine`（逻辑）、`GAME.world` / `GAME.character`（3D）、`GAME.ui`（界面）。
+
+## 如何调平衡
+
+- 改动作收益/代价、商品价格 → 只改 [js/config/balance.js](js/config/balance.js)
+- 改天数、时段、天色、机位 → 只改 [js/config/constants.js](js/config/constants.js)
+- 改随机事件概率、熬夜惩罚、每日衰减 → [js/core/engine.js](js/core/engine.js)
+- 改初始属性 → [js/core/state.js](js/core/state.js) 的 `defaultState()`
+
+## 如何加素材
+
+把 `.glb` / 贴图 / 音频放进 `assets/`，在 `js/scene/world.js` 里加载（r128 需自行引入对应 Loader）。
 
 ## 技术栈
 
