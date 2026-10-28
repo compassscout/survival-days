@@ -3,80 +3,450 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>活过三十天 3D · 生存模拟</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231a1a1f'/%3E%3Ccircle cx='12' cy='13' r='6' fill='%23e8c46a'/%3E%3Cpath d='M12 6l2 3h-4z' fill='%231a1a1f'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css">
+<title>城市漫游 · City Wander</title>
+<style>
+  /* ===== UI：半透黑面板 + 白色细字，克制安静 ===== */
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{background:#141419;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:#e8e8ee}
+  #c{position:fixed;inset:0}
+  #c canvas{display:block}
+
+  .panel{background:rgba(10,10,14,.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.08);border-radius:10px}
+
+  /* 顶部条：标题 + 探索计数 + 昼夜滑块 */
+  #topbar{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:10;
+    display:flex;align-items:center;gap:18px;padding:8px 18px;font-size:12px;font-weight:300;letter-spacing:1px}
+  #topbar h1{font-size:13px;font-weight:300;letter-spacing:2px;color:#fff}
+  #counter{color:rgba(255,255,255,.55)}
+  #counter b{color:#ffd98a;font-weight:400}
+  #timebox{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.55)}
+  #timeSlider{-webkit-appearance:none;appearance:none;width:140px;height:2px;background:rgba(255,255,255,.25);border-radius:1px;outline:none;cursor:pointer}
+  #timeSlider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;border-radius:50%;background:#ffd98a;border:none}
+  #timeSlider::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#ffd98a;border:none}
+  #timeLabel{min-width:38px;text-align:center;color:rgba(255,255,255,.8);font-variant-numeric:tabular-nums}
+
+  /* 右侧故事面板 */
+  #story{position:fixed;top:50%;right:20px;transform:translateY(-50%) translateX(24px);z-index:10;
+    width:300px;padding:22px 24px;opacity:0;pointer-events:none;transition:opacity .45s,transform .45s}
+  #story.show{opacity:1;transform:translateY(-50%) translateX(0)}
+  #story h2{font-size:15px;font-weight:400;letter-spacing:2px;color:#ffd98a;margin-bottom:12px}
+  #story p{font-size:13px;font-weight:300;line-height:2;color:rgba(255,255,255,.82)}
+  #story .tag{display:inline-block;margin-top:14px;font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1px}
+
+  /* 底部操作提示 */
+  #hint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;
+    padding:7px 16px;font-size:11px;font-weight:300;letter-spacing:1px;color:rgba(255,255,255,.5)}
+
+  /* 加载失败提示 */
+  #fallback{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:50;background:#141419;text-align:center;padding:24px}
+  #fallback p{font-size:13px;font-weight:300;line-height:2;color:rgba(255,255,255,.6)}
+
+  @media(max-width:760px){
+    #story{width:min(300px,86vw);right:50%;transform:translateY(-50%) translateX(50%)}
+    #topbar{flex-wrap:wrap;justify-content:center;gap:8px 14px;width:94vw}
+    #hint{display:none}
+  }
+</style>
 </head>
 <body>
 <div id="c"></div>
 
-<div class="hud" id="topbar">
-  <h1>活过三十天 · 3D</h1>
-  <span id="dayinfo">第 <b id="day">1</b>/30 天 · <span id="slotName">清晨</span></span>
-  <span id="weather">☀ 晴</span>
-  <span id="skillinfo">跑单 Lv.<b id="lvRun">0</b> · 创作 Lv.<b id="lvWork">0</b></span>
-  <div id="daybar"><i id="dayfill" style="width:3.33%"></i></div>
-</div>
-
-<div class="hud" id="stats">
-  <div class="stat"><div class="t"><span>饱腹</span><b id="v-hunger">62</b></div><div class="bar"><i id="b-hunger" style="width:62%"></i></div></div>
-  <div class="stat"><div class="t"><span>精力</span><b id="v-energy">78</b></div><div class="bar"><i id="b-energy" style="width:78%"></i></div></div>
-  <div class="stat"><div class="t"><span>健康</span><b id="v-health">58</b></div><div class="bar"><i id="b-health" style="width:58%"></i></div></div>
-  <div class="stat"><div class="t"><span>金钱</span><b id="v-money">60</b></div><div class="bar"><i id="b-money" style="width:10%"></i></div></div>
-  <div class="stat"><div class="t"><span>压力</span><b id="v-stress">22</b></div><div class="bar"><i id="b-stress" style="width:22%"></i></div></div>
-  <div class="stat"><div class="t"><span>作品进度</span><b id="v-work">0</b></div><div class="bar"><i id="b-work" style="width:0%"></i></div></div>
-</div>
-
-<div class="hud" id="logbox">
-  <h2>日志</h2>
-  <div id="log"></div>
-</div>
-
-<div class="hud" id="thought"></div>
-<div class="hud" id="hint">每个时段选一个动作 · 活过 30 天 · 钱、命、心态，守住一样都难</div>
-
-<div class="hud" id="panel">
-  <div id="actions"></div>
-</div>
-
-<div class="modal" id="shopModal">
-  <div class="card">
-    <h2>🛒 商店 <span class="bal">余额 ¥<span id="shopMoney">0</span></span><span class="x" id="shopClose">×</span></h2>
-    <div id="shopItems"></div>
+<div class="panel" id="topbar">
+  <h1>城市漫游</h1>
+  <span id="counter">已探索 <b id="found">0</b>/12</span>
+  <div id="timebox">
+    <span>☾</span>
+    <input type="range" id="timeSlider" min="0" max="24" step="0.1" value="10">
+    <span>☀</span>
+    <span id="timeLabel">10:00</span>
   </div>
 </div>
 
-<div class="modal" id="overlay">
-  <div class="card">
-    <h2 id="ovtitle">结束</h2>
-    <p id="ovtext"></p>
-    <div class="score">
-      <div>存活天数<b id="s-day">0</b></div>
-      <div>攒下金钱<b id="s-money">0</b></div>
-      <div>熬夜次数<b id="s-night">0</b></div>
-    </div>
-    <p id="ovskill" style="font-size:11px"></p>
-    <button id="restartBtn">再活一次</button>
-  </div>
+<div class="panel" id="story">
+  <h2 id="storyTitle"></h2>
+  <p id="storyText"></p>
+  <span class="tag" id="storyTag"></span>
 </div>
 
-<div id="fallback">
-  <h2>无法启动 3D 画面</h2>
-  <p>你的浏览器不支持 WebGL，或 three.min.js 没有加载成功。<br>请确认 vendor/three.min.js 存在，并换用最新版 Chrome / Edge 打开。</p>
-</div>
+<div class="panel" id="hint">WASD 移动 · Shift 快跑 · 鼠标拖拽旋转视角 · 滚轮缩放 · 靠近金色光点读故事</div>
 
-<script src="vendor/three.min.js"></script>
-<script src="js/util.js"></script>
-<script src="js/config/constants.js"></script>
-<script src="js/config/balance.js"></script>
-<script src="js/core/state.js"></script>
-<script src="js/scene/world.js"></script>
-<script src="js/scene/character.js"></script>
-<script src="js/ui/hud.js"></script>
-<script src="js/ui/overlay.js"></script>
-<script src="js/ui/shop.js"></script>
-<script src="js/ui/actions.js"></script>
-<script src="js/core/engine.js"></script>
-<script src="js/main.js"></script>
+<div id="fallback"><p>无法加载 Three.js 或不支持 WebGL。<br>请联网后刷新，并换用最新版 Chrome / Edge 打开。</p></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script>
+"use strict";
+if(!window.THREE){
+  document.getElementById('fallback').style.display='flex';
+}else{
+
+/* ============================================================
+ * 0. 小工具
+ * ==========================================================*/
+const $=id=>document.getElementById(id);
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const lerp=(a,b,k)=>a+(b-a)*k;
+
+/* 固定种子随机数：每次打开城市布局不变 */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const rand=mulberry32(20261029);
+const rr=(lo,hi)=>lo+rand()*(hi-lo);
+const pick=arr=>arr[Math.floor(rand()*arr.length)];
+
+/* ============================================================
+ * 1. 渲染器 / 场景 / 相机 / 光照
+ * ==========================================================*/
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,300);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;   // 柔和阴影
+$('c').appendChild(renderer.domElement);
+
+scene.fog=new THREE.Fog(0xcfd8de,40,140);          // 全局距离雾
+scene.background=new THREE.Color(0xcfd8de);
+
+const ambL=new THREE.AmbientLight(0xffffff,.5);                   // 环境光（柔）
+const hemiL=new THREE.HemisphereLight(0xdfeaf2,0x4a5a4a,.35);     // 天光
+const sunL=new THREE.DirectionalLight(0xfff2dd,1.0);              // 太阳（唯一投影光源）
+sunL.castShadow=true;
+sunL.shadow.mapSize.set(2048,2048);
+sunL.shadow.camera.left=-90; sunL.shadow.camera.right=90;
+sunL.shadow.camera.top=90;   sunL.shadow.camera.bottom=-90;
+sunL.shadow.camera.far=250;
+sunL.shadow.bias=-0.0005;
+scene.add(ambL,hemiL,sunL);
+
+/* ============================================================
+ * 2. 建模小工具：只用 Box / Cone / Cylinder / Sphere，全部哑光
+ * ==========================================================*/
+function mat(c){return new THREE.MeshLambertMaterial({color:c});}
+function box(w,h,d,c,x,y,z,parent){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true;
+  (parent||scene).add(m); return m;
+}
+function cyl(rt,rb,h,c,x,y,z,seg,parent){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||7),mat(c));
+  m.position.set(x,y,z); m.castShadow=true;
+  (parent||scene).add(m); return m;
+}
+function cone(r,h,c,x,y,z,seg,parent){
+  const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,seg||7),mat(c));
+  m.position.set(x,y,z); m.castShadow=true;
+  (parent||scene).add(m); return m;
+}
+function sph(r,c,x,y,z,parent,basic){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),
+    basic?new THREE.MeshBasicMaterial({color:c}):mat(c));  // basic=自发光感，不受光照影响
+  m.position.set(x,y,z); m.castShadow=!basic;
+  (parent||scene).add(m); return m;
+}
+
+/* ============================================================
+ * 3. 程序化生成城市（固定种子）
+ *    路网：纵横笔直马路 + 十字路口
+ *    街区内：随机高矮楼房 / 少数街角公园
+ * ==========================================================*/
+const PITCH=26;        // 街区中心间距 = 街区宽 + 路宽
+const ROAD=7;          // 路宽
+const N=3;             // 每侧街区数（城市共 6×6 个街区、7×7 条路网）
+const HALF=N*PITCH;    // 城市半径
+const colliders=[];    // 碰撞盒列表 {minX,maxX,minZ,maxZ}
+const lampHeads=[];    // 路灯灯头材质（入夜点亮）
+const markers=[];      // 交互标记点
+
+/* 地面（淡绿草） */
+const ground=box(HALF*2+ROAD*3,.2,HALF*2+ROAD*3,0x9ab58a,0,-.1,0);
+ground.castShadow=false;
+
+/* 马路（灰紫） */
+for(let k=-N;k<=N;k++){
+  const roadH=box(HALF*2+ROAD,.06,ROAD,0x8a8494,k*0,0.01,k*PITCH); roadH.castShadow=false;
+  const roadV=box(ROAD,.06,HALF*2+ROAD,0x8a8494,k*PITCH,0.01,0);  roadV.castShadow=false;
+}
+/* 十字路口斑马线 */
+for(let i=-N;i<=N;i++)for(let j=-N;j<=N;j++){
+  for(let s=-2;s<=2;s++){
+    const z1=box(1,.07,.5,0xd8d4dc,i*PITCH+s*1.2,.04,j*PITCH-ROAD/2+1); z1.castShadow=false;
+    const z2=box(1,.07,.5,0xd8d4dc,i*PITCH+s*1.2,.04,j*PITCH+ROAD/2-1); z2.castShadow=false;
+  }
+}
+
+/* 楼房配色：低饱和浅灰系 */
+const PALETTE=[0xd8d6d2,0xccc8c2,0xdcd4c8,0xc4c8ce,0xd0ccc8,0xcfc8bc];
+/* 树的配色：淡绿系 */
+const LEAF=[0x7ba56e,0x8ab07a,0x6f9a6a];
+
+/* 一棵树 */
+function tree(x,z){
+  cyl(.16,.22,1.2,0x8a6f52,x,.6,z);
+  const r=rr(.9,1.3);
+  cone(r,r*2.2,pick(LEAF),x,1.2+r*1.1,z);
+  colliders.push({minX:x-.3,maxX:x+.3,minZ:z-.3,maxZ:z+.3});
+}
+/* 一盏路灯 */
+function lamp(x,z){
+  cyl(.07,.09,3.4,0x55565e,x,1.7,z);
+  const head=sph(.22,0x8a8a92,x,3.5,z,null,true);   // 白天：灰
+  lampHeads.push(head.material);
+}
+
+/* 一栋楼房 + 可选窗条（细 Box，不用贴图） */
+function building(x,z,w,h,d){
+  box(w,h,d,pick(PALETTE),x,h/2,z);
+  /* 楼顶小装饰：水箱 / 天线 */
+  if(rand()<.5) box(rr(.8,1.4),rr(.5,.9),rr(.8,1.4),0xb8b4ae,x+rr(-w/4,w/4),h+.4,z+rr(-d/4,d/4));
+  if(rand()<.35) cyl(.03,.03,rr(1,2),0x77787e,x,h+.8,z);
+  colliders.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2});
+}
+
+/* 在每个街区内生成建筑或公园，并记录公园中心（放故事点） */
+const plazaSpots=[];
+for(let i=0;i<2*N;i++)for(let j=0;j<2*N;j++){
+  const cx=(i-N+.5)*PITCH, cz=(j-N+.5)*PITCH;      // 街区中心
+  const inner=PITCH-ROAD;                          // 街区可用宽度
+  if(rand()<.14){                                  // 14% 概率：街角公园
+    const g=box(inner*.7,.08,inner*.7,0x8fb07e,cx,.05,cz); g.castShadow=false;
+    tree(cx-inner*.25,cz-inner*.2); tree(cx+inner*.22,cz+inner*.24); tree(cx+inner*.2,cz-inner*.25);
+    plazaSpots.push({x:cx,z:cz});
+    continue;
+  }
+  /* 沿街区四周排 4 栋，高低错落 */
+  const slots=[
+    {x:cx-inner*.26,z:cz-inner*.26},{x:cx+inner*.26,z:cz-inner*.26},
+    {x:cx-inner*.26,z:cz+inner*.26},{x:cx+inner*.26,z:cz+inner*.26}
+  ];
+  for(const s of slots){
+    if(rand()<.12)continue;                        // 偶尔留空，城市更透气
+    const w=rr(5,inner*.42), d=rr(5,inner*.42);
+    const h=rand()<.18?rr(14,24):rr(4,12);         // 少数高层
+    building(s.x,s.z,w,h,d);
+    if(rand()<.3) tree(s.x+rr(-3,3),s.z+(d/2+1.5));// 楼前小树
+  }
+}
+
+/* 沿路一排树 + 路口四角路灯 */
+for(let k=-N;k<=N;k++){
+  for(let m=-N;m<N;m++){
+    const t=(m+.5)*PITCH;
+    if(rand()<.7) tree(k*PITCH+ROAD/2+1.2,t+rr(-4,4));
+    if(rand()<.7) tree(t+rr(-4,4),k*PITCH-ROAD/2-1.2);
+  }
+  for(let m=-N;m<=N;m++){
+    lamp(k*PITCH+ROAD/2+.6,m*PITCH+ROAD/2+.6);
+    lamp(k*PITCH-ROAD/2-.6,m*PITCH-ROAD/2-.6);
+  }
+}
+
+/* ============================================================
+ * 4. 发光交互标记点（金色光球，靠近弹故事）
+ * ==========================================================*/
+const STORIES=[
+  {t:'早餐铺',x:'凌晨四点半，第一笼包子出屉。蒸汽升起来，天还没亮，老板说：吃饱了才有力气想别的。',tag:'街角 · 有人比你起得早'},
+  {t:'旧书报亭',x:'亭子里堆着过期的杂志。老板说现在没人买报纸了，但他还是每天开门，"万一有人想找点什么"。',tag:'街角 · 一间不肯关的亭子'},
+  {t:'天桥',x:'站在天桥上看车流。每一盏车灯后面，都有一个正在赶路的人，和一个等他回去的地方。',tag:'路口 · 车流如河'},
+  {t:'公园长椅',x:'椅背上刻着一行小字：2015 年夏，我和她在这里坐了一下午。字迹已经很浅了。',tag:'公园 · 某个下午'},
+  {t:'便利店',x:'深夜的便利店是城市的灯塔。饭团、热饮、不打烊的灯，收留过无数不想回家的人。',tag:'街角 · 24 小时'},
+  {t:'修鞋摊',x:'老师傅修了三十年鞋。他说鞋跟磨歪了的人，走路都急。慢一点，鞋耐穿，路也长。',tag:'巷口 · 一门老手艺'},
+  {t:'天台',x:'从这里能看到半个城市。晾衣绳上的衬衫在风里鼓起来，像一面面投降又倔强的旗。',tag:'楼顶 · 风的形状'},
+  {t:'馄饨摊',x:'摊主只在傍晚出摊。一碗馄饨八块钱，汤里漂着紫菜和虾皮，是很多人小时候的味道。',tag:'巷子里 · 傍晚限定'},
+  {t:'公交站',x:'站牌上的线路改了三次。有人在这里告别，有人在这里重逢，车来了又走，站台一直在。',tag:'路口 · 来来往往'},
+  {t:'理发店',x:'旋转灯柱转了很多年。师傅理发时不怎么说话，剪完才问一句：最近还好吧。',tag:'街边 · 转动的灯柱'},
+  {t:'下棋角',x:'两位老人每天下午在这里下棋，棋盘磨得发亮。围观的人比下棋的还着急。',tag:'公园 · 楚河汉界'},
+  {t:'城墙根',x:'老城墙只剩这一段了。砖缝里长着草，墙根下晒太阳的猫，见证过比它多得多的故事。',tag:'城南 · 一段旧墙'}
+];
+const SAVE_KEY='city-wander-visited-v1';
+let visited=new Set();
+try{ visited=new Set(JSON.parse(localStorage.getItem(SAVE_KEY)||'[]')); }catch(e){}
+
+/* 标记点摆放：优先公园，其次路口/街边 */
+const spots=[];
+plazaSpots.forEach(p=>spots.push(p));
+for(let k=-N;k<=N&&spots.length<STORIES.length;k+=2){
+  spots.push({x:k*PITCH+ROAD/2+1.6,z:HALF*.6});
+  spots.push({x:-HALF*.6,z:k*PITCH-ROAD/2-1.6});
+}
+while(spots.length<STORIES.length) spots.push({x:rr(-HALF*.7,HALF*.7),z:rr(-HALF*.7,HALF*.7)});
+
+STORIES.forEach((st,i)=>{
+  const s=spots[i];
+  const seen=visited.has(i);
+  /* 底座 + 发光球（Basic 材质=自发光，夜里也亮） */
+  cyl(.5,.6,.12,0x6a6a72,s.x,.06,s.z);
+  const glow=sph(.42,seen?0x8a97a6:0xffd98a,s.x,1.5,s.z,null,true);
+  glow.castShadow=false;
+  markers.push({x:s.x,z:s.z,story:st,id:i,glow,seen});
+});
+$('found').textContent=visited.size;
+
+/* ============================================================
+ * 5. 主角（第三人称小人：Box 身体 + Sphere 头 + Cone 帽）
+ * ==========================================================*/
+const player=new THREE.Group();
+box(.5,.62,.3,0x5a6b80,0,.81,0,player);                    // 身体
+box(.16,.5,.18,0x3a3a44,-.12,.25,0,player);                // 左腿
+box(.16,.5,.18,0x3a3a44,.12,.25,0,player);                 // 右腿
+const head=sph(.24,0xd9b48f,0,1.42,0,player);              // 头
+cone(.3,.4,0xd8c8a8,0,1.72,0,player);                      // 小帽
+player.position.set(0,0,ROAD/2+2);
+scene.add(player);
+
+/* ============================================================
+ * 6. 碰撞检测（圆形玩家 vs 方形建筑，推出法）
+ * ==========================================================*/
+const PR=.45;   // 玩家半径
+function collide(px,pz){
+  for(const b of colliders){
+    const nx=clamp(px,b.minX,b.maxX), nz=clamp(pz,b.minZ,b.maxZ);
+    const dx=px-nx, dz=pz-nz, d2=dx*dx+dz*dz;
+    if(d2<PR*PR){
+      if(d2>1e-6){const d=Math.sqrt(d2);px=nx+dx/d*PR;pz=nz+dz/d*PR;}
+      else{ pz=b.maxZ+PR; }   // 极端情况：直接推到盒外
+    }
+  }
+  const L=HALF+ROAD;
+  return [clamp(px,-L,L),clamp(pz,-L,L)];
+}
+
+/* ============================================================
+ * 7. 输入：WASD 移动 + 鼠标拖拽转视角 + 滚轮缩放
+ * ==========================================================*/
+const keys={};
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+let camYaw=Math.PI, camPitch=.42, camDist=9;   // 相机轨道参数
+let dragging=false,lastX=0,lastY=0;
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  camYaw-=(e.clientX-lastX)*.005;
+  camPitch=clamp(camPitch+(e.clientY-lastY)*.004,.08,1.25);
+  lastX=e.clientX; lastY=e.clientY;
+});
+renderer.domElement.addEventListener('wheel',e=>{
+  camDist=clamp(camDist+e.deltaY*.01,4,20);
+},{passive:true});
+
+/* ============================================================
+ * 8. 昼夜系统：滑块驱动太阳 / 天空 / 雾 / 路灯
+ * ==========================================================*/
+const DAY_SKY=new THREE.Color(0xcfd8de), NIGHT_SKY=new THREE.Color(0x232a3a);
+const DAY_SUN=new THREE.Color(0xfff2dd), DUSK_SUN=new THREE.Color(0xffb27a);
+const tmpC=new THREE.Color();
+function applyTime(h){
+  /* h: 0~24。太阳仰角按正弦走，6 点日出、18 点日落 */
+  const elev=Math.sin((h-6)/12*Math.PI);
+  const day=clamp(elev,0,1);
+  sunL.intensity=.12+day*1.0;
+  ambL.intensity=.28+day*.32;
+  hemiL.intensity=.18+day*.22;
+  /* 太阳绕东西向转动 */
+  const ang=(h-6)/12*Math.PI;
+  sunL.position.set(Math.cos(ang)*80,Math.max(Math.sin(ang)*90,2)+2,30);
+  sunL.color.copy(tmpC.copy(DUSK_SUN).lerp(DAY_SUN,clamp(elev*2.2,0,1)));
+  /* 天空与雾同色，晨昏偏暖 */
+  tmpC.copy(NIGHT_SKY).lerp(DAY_SKY,day);
+  if(elev>0&&elev<.35)tmpC.lerp(new THREE.Color(0xe8c49a),.35*(1-elev/.35));
+  scene.background.copy(tmpC);
+  scene.fog.color.copy(tmpC);
+  /* 入夜点亮路灯 */
+  const lampOn=elev<.12;
+  lampHeads.forEach(m=>m.color.setHex(lampOn?0xffd98a:0x8a8a92));
+  /* 顶部时间文本 */
+  const hh=Math.floor(h), mm=Math.floor((h-hh)*60);
+  $('timeLabel').textContent=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+}
+$('timeSlider').addEventListener('input',e=>applyTime(parseFloat(e.target.value)));
+applyTime(10);
+
+/* ============================================================
+ * 9. 故事面板：靠近自动弹出，离开自动收起
+ * ==========================================================*/
+let activeMarker=null;
+function openStory(m){
+  activeMarker=m;
+  $('storyTitle').textContent=m.story.t;
+  $('storyText').textContent=m.story.x;
+  $('storyTag').textContent=m.story.tag;
+  $('story').classList.add('show');
+  if(!m.seen){                                   // 第一次看：变色 + 存档
+    m.seen=true;
+    m.glow.material.color.setHex(0x8a97a6);
+    visited.add(m.id);
+    $('found').textContent=visited.size;
+    try{localStorage.setItem(SAVE_KEY,JSON.stringify([...visited]));}catch(e){}
+  }
+}
+function closeStory(){
+  activeMarker=null;
+  $('story').classList.remove('show');
+}
+
+/* ============================================================
+ * 10. 主循环
+ * ==========================================================*/
+const clock=new THREE.Clock();
+let heading=0;   // 角色朝向（平滑转向）
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),.05);
+  const t=clock.elapsedTime;
+
+  /* --- 移动（相对相机朝向） --- */
+  let mx=0,mz=0;
+  if(keys['w'])mz-=1; if(keys['s'])mz+=1;
+  if(keys['a'])mx-=1; if(keys['d'])mx+=1;
+  if(mx||mz){
+    const len=Math.hypot(mx,mz); mx/=len; mz/=len;
+    const speed=keys['shift']?9:5;
+    const sin=Math.sin(camYaw),cos=Math.cos(camYaw);
+    /* 相机系方向 → 世界系方向 */
+    const wx=mx*cos-mz*sin, wz=mx*sin+mz*cos;
+    let nx=player.position.x+wx*speed*dt;
+    let nz=player.position.z+wz*speed*dt;
+    [nx,nz]=collide(nx,nz);
+    player.position.x=nx; player.position.z=nz;
+    /* 朝向平滑转向移动方向 */
+    heading+=(((Math.atan2(wx,wz)-heading+Math.PI*3)%(Math.PI*2))-Math.PI)*Math.min(1,dt*12);
+    player.rotation.y=heading;
+    /* 走路小步幅起伏 */
+    player.position.y=Math.abs(Math.sin(t*10))*.06;
+  }else{
+    player.position.y*=Math.max(0,1-dt*8);
+  }
+
+  /* --- 相机：轨道跟随角色 --- */
+  const tx=player.position.x-Math.sin(camYaw)*Math.cos(camPitch)*camDist;
+  const ty=player.position.y+1.4+Math.sin(camPitch)*camDist;
+  const tz=player.position.z-Math.cos(camYaw)*Math.cos(camPitch)*camDist;
+  camera.position.lerp(new THREE.Vector3(tx,ty,tz),1-Math.pow(.0001,dt));
+  camera.lookAt(player.position.x,player.position.y+1.3,player.position.z);
+
+  /* --- 标记点：呼吸浮动 + 靠近检测 --- */
+  let nearest=null,nd=1e9;
+  for(const m of markers){
+    m.glow.position.y=1.5+Math.sin(t*2+m.id)*.18;   // 呼吸
+    const d=Math.hypot(player.position.x-m.x,player.position.z-m.z);
+    if(d<nd){nd=d;nearest=m;}
+  }
+  if(nearest&&nd<3.2){ if(activeMarker!==nearest)openStory(nearest); }
+  else if(activeMarker&&nd>4.5){ closeStory(); }
+
+  renderer.render(scene,camera);
+}
+animate();
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+}
+</script>
 </body>
 </html>
