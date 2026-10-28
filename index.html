@@ -3,107 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>活过三十天 · 生存模拟</title>
+<title>活过三十天 3D · 生存模拟</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231a1a1f'/%3E%3Ccircle cx='12' cy='13' r='6' fill='%23e8c46a'/%3E%3Cpath d='M12 6l2 3h-4z' fill='%231a1a1f'/%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#141419; --panel:#1d1d24; --panel2:#24242d; --line:#2f2f3a;
   --tx:#e8e8ee; --mut:#9a9aa5; --acc:#e8c46a; --acc2:#7fb069;
-  --bad:#c96a5a; --good:#7fb069; --warn:#d6a24c; --pill:#2b2b35;
-  --r:12px;
+  --bad:#c96a5a; --warn:#d6a24c; --pill:#2b2b35; --r:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{
-  background:var(--bg);color:var(--tx);
-  font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
-  overflow:hidden;
-}
-.wrap{height:100vh;display:flex;flex-direction:column;max-width:1000px;margin:0 auto}
-header{padding:12px 16px 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
-header h1{font-size:15px;font-weight:600;letter-spacing:.5px;color:var(--acc)}
-header .sub{font-size:12px;color:var(--mut)}
-header .phase{margin-left:auto;font-size:12px;color:var(--mut)}
-header .phase b{color:var(--tx);font-size:13px}
-.daybar{height:3px;background:var(--line);border-radius:2px;overflow:hidden}
-.daybar i{display:block;height:100%;background:var(--acc);transition:width .4s}
-.scroll{flex:1;overflow-y:auto;padding:14px 16px 90px}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
-@media(min-width:640px){.stats{grid-template-columns:repeat(3,1fr)}}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
-.stat .t{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-bottom:6px}
+body{background:var(--bg);color:var(--tx);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;overflow:hidden}
+#c{position:fixed;inset:0}
+#c canvas{display:block}
+.hud{position:fixed;z-index:5}
+#topbar{top:0;left:0;right:0;padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(rgba(16,16,20,.92),rgba(16,16,20,0))}
+#topbar h1{font-size:15px;font-weight:600;letter-spacing:.5px;color:var(--acc)}
+#dayinfo{font-size:12px;color:var(--mut)}
+#dayinfo b{color:var(--tx);font-size:13px}
+#weather{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:3px 10px;background:rgba(29,29,36,.85)}
+#skillinfo{font-size:11px;color:var(--mut)}
+#skillinfo b{color:var(--acc)}
+#daybar{width:100%;height:3px;background:var(--pill);border-radius:2px;overflow:hidden}
+#daybar i{display:block;height:100%;background:var(--acc);transition:width .4s}
+#stats{top:64px;left:14px;width:210px;display:flex;flex-direction:column;gap:7px}
+.stat{background:rgba(29,29,36,.88);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
+.stat .t{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-bottom:4px}
 .stat .t b{color:var(--tx)}
-.bar{height:7px;background:var(--pill);border-radius:4px;overflow:hidden}
-.bar i{display:block;height:100%;border-radius:4px;transition:width .35s}
-.scene{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;position:relative;margin-bottom:12px;min-height:150px}
-.scene .moon{position:absolute;top:16px;right:26px;width:26px;height:26px;border-radius:50%;background:#e6e2cf;box-shadow:0 0 18px 4px rgba(230,226,207,.25)}
-.scene .sun{position:absolute;top:18px;right:30px;width:30px;height:30px;border-radius:50%;background:#f0c06a;box-shadow:0 0 22px 6px rgba(240,192,106,.3)}
-.scene .hint{position:absolute;top:10px;left:12px;font-size:11px;color:var(--mut)}
-.person{position:absolute;left:50%;bottom:34%;transform:translateX(-50%);width:56px;height:76px}
-.person svg{width:100%;height:100%;display:block}
-.thought{position:absolute;bottom:calc(34% + 82px);left:50%;transform:translateX(-50%);background:#11111a;border:1px solid var(--line);color:var(--tx);font-size:12px;padding:6px 10px;border-radius:8px;white-space:nowrap;opacity:0;transition:opacity .3s}
-.thought.show{opacity:1}
-.thought:after{content:"";position:absolute;top:100%;left:50%;margin-left:-5px;border:5px solid transparent;border-top-color:var(--line)}
-h2{font-size:13px;color:var(--mut);margin:14px 0 8px;font-weight:600}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-@media(min-width:640px){.actions{grid-template-columns:repeat(3,1fr)}}
-.act{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:10px 11px;cursor:pointer;transition:transform .08s,border-color .2s;text-align:left}
-.act:active{transform:scale(.98)}
+.bar{height:6px;background:var(--pill);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;transition:width .35s}
+#panel{bottom:0;left:0;right:0;padding:12px 14px 14px;background:linear-gradient(rgba(16,16,20,0),rgba(16,16,20,.94) 30%)}
+#actions{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;max-width:1200px;margin:0 auto}
+.act{background:rgba(36,36,45,.92);border:1px solid var(--line);border-radius:var(--r);padding:9px 10px;cursor:pointer;transition:transform .08s,border-color .2s;text-align:left}
 .act:hover{border-color:var(--acc)}
-.act .n{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:4px}
-.act .n svg{width:15px;height:15px;flex:none}
-.act .e{font-size:11px;color:var(--mut);line-height:1.4}
-.log{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin-top:12px;padding:10px 12px}
-.log .lines{font-size:12px;color:var(--mut);line-height:1.55;max-height:130px;overflow-y:auto}
-.log .lines .l{display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed var(--line)}
-.log .lines .l:last-child{border-bottom:none}
-.log .lines .t{color:var(--acc);flex:none}
-.log .lines .dmg{color:var(--bad)}
-.log .lines .up{color:var(--good)}
-.overlay{position:fixed;inset:0;background:rgba(10,10,14,.86);display:none;align-items:center;justify-content:center;padding:24px;z-index:10}
-.overlay.show{display:flex}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:360px;width:100%;padding:22px;text-align:center}
-.card h2{color:var(--acc);font-size:17px;margin:0 0 10px}
-.card p{color:var(--mut);font-size:13px;line-height:1.6;margin-bottom:8px}
-.card .score{display:flex;justify-content:space-around;margin:14px 0;font-size:12px;color:var(--mut)}
-.card .score b{color:var(--tx);display:block;font-size:16px;margin-top:2px}
-.card button{margin-top:8px;background:var(--acc);color:#141419;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer}
-.legend{font-size:11px;color:var(--mut);margin-top:10px;line-height:1.5}
+.act:active{transform:scale(.97)}
+.act .n{font-size:13px;font-weight:600;margin-bottom:3px}
+.act .e{font-size:10px;color:var(--mut);line-height:1.35}
+.act.shop{border-color:var(--acc);background:rgba(43,43,53,.95)}
+.act.shop .n{color:var(--acc)}
+body.busy .act{pointer-events:none;opacity:.55}
+body.busy .act.shop{pointer-events:auto;opacity:1}
+#logbox{top:64px;right:14px;width:250px;max-height:46vh;background:rgba(29,29,36,.88);border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;overflow-y:auto}
+#logbox h2{font-size:11px;color:var(--mut);margin-bottom:6px;font-weight:600}
+#log .l{font-size:11px;color:var(--mut);line-height:1.5;padding:3px 0;border-bottom:1px dashed var(--line);display:flex;gap:6px}
+#log .l:last-child{border-bottom:none}
+#log .t{color:var(--acc);flex:none}
+#log .dmg{color:var(--bad)}
+#log .up{color:var(--acc2)}
+#thought{top:88px;left:50%;transform:translateX(-50%);background:#11111a;border:1px solid var(--line);color:var(--tx);font-size:13px;padding:8px 14px;border-radius:10px;white-space:nowrap;opacity:0;transition:opacity .3s;pointer-events:none}
+#thought.show{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(10,10,14,.8);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}
+.modal.show{display:flex}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:420px;width:100%;padding:20px;max-height:86vh;overflow-y:auto}
+.card h2{color:var(--acc);font-size:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card h2 .bal{font-size:12px;color:var(--mut);font-weight:400}
+.card h2 .x{cursor:pointer;color:var(--mut);font-size:20px;line-height:1;padding:0 4px}
+.card h2 .x:hover{color:var(--tx)}
+.shopitem{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:8px;background:var(--panel2)}
+.shopitem .ic{font-size:20px}
+.shopitem .inf{flex:1}
+.shopitem .nm{font-size:13px;font-weight:600}
+.shopitem .ds{font-size:11px;color:var(--mut);margin-top:2px;line-height:1.4}
+.shopitem button{background:var(--acc);color:#141419;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.shopitem button:disabled{background:var(--pill);color:var(--mut);cursor:default}
+.shopitem.owned{opacity:.55}
+#overlay .card{text-align:center;max-width:380px}
+#overlay h2{justify-content:center}
+#overlay p{color:var(--mut);font-size:13px;line-height:1.7;margin-bottom:8px}
+#overlay .score{display:flex;justify-content:space-around;margin:14px 0;font-size:12px;color:var(--mut)}
+#overlay .score b{color:var(--tx);display:block;font-size:17px;margin-top:3px}
+#overlay button{margin-top:8px;background:var(--acc);color:#141419;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer}
+#hint{bottom:140px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--mut);background:rgba(29,29,36,.8);padding:4px 12px;border-radius:14px;pointer-events:none;transition:opacity .5s;white-space:nowrap}
+#fallback{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:50;background:var(--bg);text-align:center;padding:24px}
+#fallback h2{color:var(--acc)}
+#fallback p{color:var(--mut);font-size:13px;line-height:1.7}
+@media(max-width:900px){
+  #stats{width:150px;top:58px}
+  #logbox{display:none}
+  #actions{grid-template-columns:repeat(4,1fr)}
+  #hint{display:none}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>活过三十天</h1>
-    <span class="sub">生存模拟</span>
-    <span class="phase">第 <b id="day">1</b>/30 天 · <span id="slot">清晨</span></span>
-  </header>
-  <div class="daybar"><i id="dayfill" style="width:3.33%"></i></div>
-  <div class="scroll">
-    <div class="stats">
-      <div class="stat"><div class="t"><span>饱腹</span><b id="v-hunger">62</b></div><div class="bar"><i id="b-hunger" style="width:62%;background:var(--acc2)"></i></div></div>
-      <div class="stat"><div class="t"><span>精力</span><b id="v-energy">78</b></div><div class="bar"><i id="b-energy" style="width:78%;background:var(--acc)"></i></div></div>
-      <div class="stat"><div class="t"><span>健康</span><b id="v-health">58</b></div><div class="bar"><i id="b-health" style="width:58%;background:var(--acc2)"></i></div></div>
-      <div class="stat"><div class="t"><span>金钱</span><b id="v-money">60</b></div><div class="bar"><i id="b-money" style="width:10%;background:#8fb0c9"></i></div></div>
-      <div class="stat"><div class="t"><span>压力</span><b id="v-stress">22</b></div><div class="bar"><i id="b-stress" style="width:22%;background:var(--warn)"></i></div></div>
-      <div class="stat"><div class="t"><span>作品进度</span><b id="v-work">0</b></div><div class="bar"><i id="b-work" style="width:0%;background:#b08fcf"></i></div></div>
-    </div>
-    <div class="scene">
-      <span class="hint" id="scenetxt">清晨 · 新的一天</span>
-      <div id="skyicon" class="sun"></div>
-      <div class="person" id="person"></div>
-      <div class="thought" id="thought"></div>
-    </div>
-    <h2>这一个时段，做什么？</h2>
-    <div class="actions" id="actions"></div>
-    <div class="log">
-      <h2 style="margin-top:0">日志</h2>
-      <div class="lines" id="log"></div>
-    </div>
-    <div class="legend">规则：饱腹 / 精力 / 健康降到 0 会倒下。深夜不睡觉会熬夜，第二天垮得很快。饿着跑单有低血糖风险。钱一直见底，心态会崩。活过第 30 天结算。</div>
+<div id="c"></div>
+
+<div class="hud" id="topbar">
+  <h1>活过三十天 · 3D</h1>
+  <span id="dayinfo">第 <b id="day">1</b>/30 天 · <span id="slotName">清晨</span></span>
+  <span id="weather">☀ 晴</span>
+  <span id="skillinfo">跑单 Lv.<b id="lvRun">0</b> · 创作 Lv.<b id="lvWork">0</b></span>
+  <div id="daybar"><i id="dayfill" style="width:3.33%"></i></div>
+</div>
+
+<div class="hud" id="stats">
+  <div class="stat"><div class="t"><span>饱腹</span><b id="v-hunger">62</b></div><div class="bar"><i id="b-hunger" style="width:62%"></i></div></div>
+  <div class="stat"><div class="t"><span>精力</span><b id="v-energy">78</b></div><div class="bar"><i id="b-energy" style="width:78%"></i></div></div>
+  <div class="stat"><div class="t"><span>健康</span><b id="v-health">58</b></div><div class="bar"><i id="b-health" style="width:58%"></i></div></div>
+  <div class="stat"><div class="t"><span>金钱</span><b id="v-money">60</b></div><div class="bar"><i id="b-money" style="width:10%"></i></div></div>
+  <div class="stat"><div class="t"><span>压力</span><b id="v-stress">22</b></div><div class="bar"><i id="b-stress" style="width:22%"></i></div></div>
+  <div class="stat"><div class="t"><span>作品进度</span><b id="v-work">0</b></div><div class="bar"><i id="b-work" style="width:0%"></i></div></div>
+</div>
+
+<div class="hud" id="logbox">
+  <h2>日志</h2>
+  <div id="log"></div>
+</div>
+
+<div class="hud" id="thought"></div>
+<div class="hud" id="hint">每个时段选一个动作 · 活过 30 天 · 钱、命、心态，守住一样都难</div>
+
+<div class="hud" id="panel">
+  <div id="actions"></div>
+</div>
+
+<div class="modal" id="shopModal">
+  <div class="card">
+    <h2>🛒 商店 <span class="bal">余额 ¥<span id="shopMoney">0</span></span><span class="x" id="shopClose">×</span></h2>
+    <div id="shopItems"></div>
   </div>
 </div>
-<div class="overlay" id="overlay">
+
+<div class="modal" id="overlay">
   <div class="card">
     <h2 id="ovtitle">结束</h2>
     <p id="ovtext"></p>
@@ -112,156 +133,571 @@ h2{font-size:13px;color:var(--mut);margin:14px 0 8px;font-weight:600}
       <div>攒下金钱<b id="s-money">0</b></div>
       <div>熬夜次数<b id="s-night">0</b></div>
     </div>
-    <button onclick="location.reload()">再活一次</button>
+    <p id="ovskill" style="font-size:11px"></p>
+    <button id="restartBtn">再活一次</button>
   </div>
 </div>
+
+<div id="fallback">
+  <h2>无法启动 3D 画面</h2>
+  <p>你的浏览器不支持 WebGL，或 three.min.js 没有加载成功。<br>请确认 three.min.js 与本文件在同一目录，并换用最新版 Chrome / Edge 打开。</p>
+</div>
+
+<script src="three.min.js"></script>
 <script>
 "use strict";
+if(!window.THREE){
+  document.getElementById('fallback').style.display='flex';
+}else{
+
+/* ============ 基础常量 ============ */
 const SLOTS=["清晨","上午","下午","傍晚","深夜"];
 const GAME_DAYS=30;
-const S={hunger:62, energy:78, health:58, stress:22, money:60, work:0, day:1, slot:0, nightCount:0, end:false};
-const ACTIONS=[
-  {id:"run", name:"跑单", cost:"+52元 · 耗精力/饱腹 · 加压力", fn:"doRun", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.2"/><path d="M6.5 20c.8-3.5 3-5.5 5.5-5.5s4.7 2 5.5 5.5"/></svg>'},
-  {id:"eat", name:"吃一顿", cost:"-12元 · 饱腹+ · 健康+", fn:"doEat", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 4v6a2 2 0 004 0V4"/><path d="M11 4v6a2 2 0 004 0V4"/><path d="M15 4v14h2V4"/></svg>'},
-  {id:"sleep", name:"睡觉", cost:"回精力 · 耗饱腹", fn:"doSleep", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h16"/><path d="M6 9l-1 3 1 3"/><path d="M18 9l1 3-1 3"/></svg>'},
-  {id:"rest", name:"休息", cost:"降压力 · 略耗精力", fn:"doRest", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg>'},
-  {id:"doc", name:"看医生", cost:"-45元 · 健康+", fn:"doDoc", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3h8l3 3v15H5V6z"/><path d="M9 12h6M12 9v6"/></svg>'},
-  {id:"work", name:"做内容", cost:"作品+ · 耗精力/饱腹", fn:"doWork", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 9l4 4 3-3"/></svg>'}
-];
 const $=id=>document.getElementById(id);
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
-const log=(msg,cls)=>{const d=document.createElement('div');d.className='l';d.innerHTML='<span class="t">D'+S.day+'·'+SLOTS[S.slot]+'</span><span>'+(cls?('<span class="'+cls+'">'+msg+'</span>'):msg)+'</span>';const box=$('log');box.prepend(d);while(box.children.length>8)box.lastChild.remove();};
-function moneyPct(){return clamp(Math.round(S.money/200*100),2,100);}
+
+const S={
+  hunger:62, energy:78, health:58, stress:22, money:60, work:0,
+  day:1, slot:0, nightCount:0, nightTmp:0, end:false,
+  runExp:0, workExp:0, nightAction:'', weather:'sun',
+  items:{raincoat:false,thermos:false,earphone:false,gym:false,bike:false,pc:false}
+};
+const lvRun=()=>Math.floor(S.runExp/8);
+const lvWork=()=>Math.floor(S.workExp/4);
+
+/* ============ 3D 场景 ============ */
+let renderer,scene,camera,clock;
+let sunL,ambL,sunMesh,moonMesh,stars,rainPts,laptopG,steamG,bedG;
+let char,bike,wheelF,wheelB;
+const lampHeads=[],lampPts=[],winMats=[];
+let mode='idle',rideDir=1;
+
+const CAMS={
+  overview:{p:[17,11,17],   l:[0,1,0]},
+  ride:    {p:[2,6.5,11],   l:[0,1,0]},
+  home:    {p:[-6.5,4.5,-1],l:[-13,1,-8]},
+  stall:   {p:[4.5,4,15.5], l:[10,1.2,9]},
+  hospital:{p:[6.5,5,-2],   l:[13,1.5,-9]},
+  park:    {p:[-4,4.2,16],  l:[-10,1,10]}
+};
+const camPos=new THREE.Vector3(17,11,17), camLookT=new THREE.Vector3(0,1,0), curLook=new THREE.Vector3(0,1,0);
+
+const PALETTES=[
+  {sky:0xf2b880, fog:0xf2b880, sun:0xffd9a0, si:.85, ai:.5,  lamp:false, win:false, star:false, sunPos:[-18,7,6]},
+  {sky:0x8fc3e8, fog:0x9fcbe8, sun:0xfff3dd, si:1.15,ai:.65, lamp:false, win:false, star:false, sunPos:[-4,22,8]},
+  {sky:0x84aede, fog:0x93b8de, sun:0xffeec8, si:1.05,ai:.6,  lamp:false, win:false, star:false, sunPos:[10,17,6]},
+  {sky:0xd97e52, fog:0xd98a60, sun:0xff9c5a, si:.55, ai:.42, lamp:true,  win:true,  star:false, sunPos:[20,5,4]},
+  {sky:0x141824, fog:0x141824, sun:0x8fa0ff, si:.16, ai:.3,  lamp:true,  win:true,  star:true,  sunPos:[6,16,-14]}
+];
+const cur={sky:new THREE.Color(0xf2b880),fog:new THREE.Color(0xf2b880),sun:new THREE.Color(0xffd9a0),si:.85,ai:.5};
+const targetSunPos=new THREE.Vector3(-18,7,6);
+const tmpColor=new THREE.Color();
+
+function mat(c){return new THREE.MeshLambertMaterial({color:c});}
+function box(w,h,d,c,x,y,z,parent){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true;
+  (parent||scene).add(m); return m;
+}
+function noFog(m){m.fog=false;return m;}
+
+function init3D(){
+  scene=new THREE.Scene();
+  scene.background=cur.sky;
+  scene.fog=new THREE.Fog(0xf2b880,30,75);
+  camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,200);
+  camera.position.copy(camPos);
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  $('c').appendChild(renderer.domElement);
+  clock=new THREE.Clock();
+
+  ambL=new THREE.AmbientLight(0xffffff,.5); scene.add(ambL);
+  scene.add(new THREE.HemisphereLight(0xcfe8ff,0x3a4a3a,.35));
+  sunL=new THREE.DirectionalLight(0xffd9a0,.85);
+  sunL.position.set(-18,7,6);
+  sunL.castShadow=true;
+  sunL.shadow.mapSize.set(1024,1024);
+  sunL.shadow.camera.left=-30; sunL.shadow.camera.right=30;
+  sunL.shadow.camera.top=30;  sunL.shadow.camera.bottom=-30;
+  sunL.shadow.camera.far=90;
+  scene.add(sunL);
+
+  /* 地面与道路 */
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(90,90),mat(0x2e4a32));
+  ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+  const roadM=mat(0x33333c);
+  const r1=new THREE.Mesh(new THREE.PlaneGeometry(40,4.6),roadM);
+  r1.rotation.x=-Math.PI/2; r1.position.y=.01; r1.receiveShadow=true; scene.add(r1);
+  const r2=new THREE.Mesh(new THREE.PlaneGeometry(4.6,40),roadM);
+  r2.rotation.x=-Math.PI/2; r2.position.y=.01; r2.receiveShadow=true; scene.add(r2);
+  for(let i=-2;i<=2;i++){
+    const z=new THREE.Mesh(new THREE.PlaneGeometry(.5,3.6),noFog(new THREE.MeshBasicMaterial({color:0x8a8a92})));
+    z.rotation.x=-Math.PI/2; z.position.set(i*1.1,.02,3.9); scene.add(z);
+  }
+
+  /* 背景楼群（带窗） */
+  const winGeo=new THREE.PlaneGeometry(.55,.7);
+  function building(x,z,w,h,d,c){
+    box(w,h,d,c,x,h/2,z);
+    const cols=Math.max(2,Math.floor(w/1.4)), rows=Math.max(2,Math.floor(h/1.6));
+    for(let r=0;r<rows;r++)for(let ci=0;ci<cols;ci++){
+      if(Math.random()<.25)continue;
+      const wm=noFog(new THREE.MeshBasicMaterial({color:0x2a2f3a}));
+      const win=new THREE.Mesh(winGeo,wm);
+      win.position.set(x-w/2+.9+ci*(w-1.8)/Math.max(1,cols-1), .9+r*(h-1.6)/Math.max(1,rows-1), z+d/2+.02);
+      scene.add(win); winMats.push(wm);
+    }
+  }
+  building(-22,-20,7,13,6,0x4a4a58); building(-12,-22,6,9,6,0x55505e);
+  building(2,-22,8,15,7,0x474552);   building(13,-21,6,8,6,0x525a66);
+  building(22,-14,6,11,6,0x4a4a58);  building(23,2,6,14,7,0x50545e);
+  building(22,14,7,10,6,0x474552);   building(-23,16,6,12,6,0x55505e);
+  building(-24,2,6,9,6,0x4c505c);    building(-20,22,7,8,6,0x4a4a58);
+
+  /* 家 */
+  box(4.5,2.8,4,0x8a6f52,-13,1.4,-10);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(3.6,1.8,4),mat(0x6b4a3a));
+  roof.position.set(-13,3.7,-10); roof.rotation.y=Math.PI/4; roof.castShadow=true; scene.add(roof);
+  bedG=new THREE.Group();
+  box(1.9,.45,1,0x5a6a8a,0,.22,0,bedG);
+  box(.5,.5,.9,0xe8e0d0,-.6,.5,0,bedG);
+  bedG.position.set(-15.8,0,-7); scene.add(bedG);
+  box(1.6,.1,.9,0x6b5a44,-11,1,-6.5);
+  box(.15,1,.15,0x6b5a44,-11.6,.5,-6.5); box(.15,1,.15,0x6b5a44,-10.4,.5,-6.5);
+  laptopG=new THREE.Group();
+  box(.7,.05,.5,0x2a2a32,0,0,0,laptopG);
+  const lscr=new THREE.Mesh(new THREE.PlaneGeometry(.65,.45),noFog(new THREE.MeshBasicMaterial({color:0x8fd0ff})));
+  lscr.position.set(0,.25,-.22); lscr.rotation.x=-.3; laptopG.add(lscr);
+  laptopG.position.set(-11,1.08,-6.5); laptopG.visible=false; scene.add(laptopG);
+
+  /* 饭摊 */
+  box(2.6,1,1.4,0x7a5a40,10,.5,9);
+  const canopy=new THREE.Mesh(new THREE.ConeGeometry(2.3,1.1,4),mat(0xc96a5a));
+  canopy.position.set(10,2.4,9); canopy.rotation.y=Math.PI/4; canopy.castShadow=true; scene.add(canopy);
+  box(.14,2,.14,0x5a4a3a,8.9,1,9.8); box(.14,2,.14,0x5a4a3a,11.1,1,8.2);
+  steamG=new THREE.Group();
+  for(let i=0;i<3;i++){
+    const s=new THREE.Mesh(new THREE.SphereGeometry(.16,6,6),new THREE.MeshBasicMaterial({color:0xd8d8e0,transparent:true,opacity:.6}));
+    s.position.set(9.6+i*.4,1.3,9); steamG.add(s);
+  }
+  steamG.visible=false; scene.add(steamG);
+
+  /* 医院 */
+  box(5,4.5,4.5,0xd8d8de,13,2.25,-11);
+  box(1.5,.5,.12,0xc94a4a,13,3.4,-8.72); box(.5,1.5,.12,0xc94a4a,13,3.4,-8.72);
+
+  /* 配送站 */
+  box(3.6,2.6,3,0xc9a24c,0,1.3,-13.5);
+  box(4.2,.4,3.6,0x8a7430,0,2.8,-13.5);
+
+  /* 公园：树 + 长椅 */
+  function tree(x,z){
+    const t=new THREE.Group();
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,1.2,6),mat(0x6b4a3a));
+    trunk.position.y=.6; trunk.castShadow=true; t.add(trunk);
+    const leaf=new THREE.Mesh(new THREE.ConeGeometry(1.1,2.2,7),mat(0x3f6b3a));
+    leaf.position.y=2.2; leaf.castShadow=true; t.add(leaf);
+    t.position.set(x,0,z); scene.add(t);
+  }
+  tree(-13,12); tree(-7,13); tree(-15,8); tree(7,-13); tree(-7,-14); tree(16,12); tree(5,14);
+  box(1.8,.12,.5,0x7a5a40,-10,.55,10);
+  box(.12,.55,.5,0x5a4a3a,-10.7,.28,10); box(.12,.55,.5,0x5a4a3a,-9.3,.28,10);
+
+  /* 路灯 */
+  function lamp(x,z,withLight){
+    const g=new THREE.Group();
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,3.4,6),mat(0x3a3a44));
+    pole.position.y=1.7; pole.castShadow=true; g.add(pole);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),noFog(new THREE.MeshBasicMaterial({color:0x555560})));
+    head.position.y=3.5; g.add(head); lampHeads.push(head.material);
+    if(withLight){
+      const pl=new THREE.PointLight(0xffd98a,0,15);
+      pl.position.y=3.5; g.add(pl); lampPts.push(pl);
+    }
+    g.position.set(x,0,z); scene.add(g);
+  }
+  lamp(-6,3.6,true); lamp(6,-3.6,true); lamp(-6,-3.6,false); lamp(6,3.6,false);
+
+  /* 太阳 / 月亮 / 星星 */
+  sunMesh=new THREE.Mesh(new THREE.SphereGeometry(1.6,12,12),noFog(new THREE.MeshBasicMaterial({color:0xffd98a})));
+  scene.add(sunMesh);
+  moonMesh=new THREE.Mesh(new THREE.SphereGeometry(1.1,12,12),noFog(new THREE.MeshBasicMaterial({color:0xe6e2cf})));
+  moonMesh.position.set(9.6,25.6,-22.4); moonMesh.visible=false; scene.add(moonMesh);
+  const starGeo=new THREE.BufferGeometry(), sp=[];
+  for(let i=0;i<350;i++){
+    const a=Math.random()*Math.PI*2, r=45+Math.random()*25, y=10+Math.random()*35;
+    sp.push(Math.cos(a)*r,y,Math.sin(a)*r);
+  }
+  starGeo.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));
+  stars=new THREE.Points(starGeo,noFog(new THREE.PointsMaterial({color:0xcdd6f4,size:.35})));
+  stars.visible=false; scene.add(stars);
+
+  /* 雨 */
+  const rainGeo=new THREE.BufferGeometry(), rp=[];
+  for(let i=0;i<900;i++) rp.push((Math.random()-.5)*44,Math.random()*22,(Math.random()-.5)*44);
+  rainGeo.setAttribute('position',new THREE.Float32BufferAttribute(rp,3));
+  rainPts=new THREE.Points(rainGeo,noFog(new THREE.PointsMaterial({color:0x9db4d0,size:.14,transparent:true,opacity:.75})));
+  rainPts.visible=false; scene.add(rainPts);
+
+  /* 人物 + 电驴 */
+  char=new THREE.Group();
+  box(.16,.5,.18,0x2b2b33,-.12,.25,0,char);
+  box(.16,.5,.18,0x2b2b33,.12,.25,0,char);
+  box(.5,.62,.3,0x3a6ea8,0,.81,0,char);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.26,10,10),mat(0xd9a06b));
+  head.position.y=1.45; head.castShadow=true; char.add(head);
+  const helmet=new THREE.Mesh(new THREE.SphereGeometry(.3,10,8,0,Math.PI*2,0,Math.PI/2),mat(0xe8c46a));
+  helmet.position.y=1.52; char.add(helmet);
+  char.position.set(-13,0,-7); scene.add(char);
+
+  bike=new THREE.Group();
+  box(1.1,.14,.34,0xc94a4a,0,.5,0,bike);
+  box(.14,.55,.14,0x8a8a92,.45,.78,0,bike);
+  box(.5,.08,.3,0x2b2b33,-.15,.72,0,bike);
+  const wg=new THREE.TorusGeometry(.32,.09,8,16);
+  wheelF=new THREE.Mesh(wg,mat(0x22222a)); wheelF.position.set(.55,.32,0); wheelF.castShadow=true; bike.add(wheelF);
+  wheelB=new THREE.Mesh(wg,mat(0x22222a)); wheelB.position.set(-.5,.32,0); wheelB.castShadow=true; bike.add(wheelB);
+  bike.visible=false; scene.add(bike);
+
+  addEventListener('resize',()=>{
+    camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+  });
+  animate();
+}
+
+/* ============ 动画循环 ============ */
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),.05), t=clock.elapsedTime;
+
+  /* 昼夜过渡 */
+  const P=PALETTES[S.slot], k=1-Math.pow(.0018,dt);
+  cur.sky.lerp(tmpColor.setHex(P.sky),k);
+  cur.fog.lerp(tmpColor.setHex(P.fog),k);
+  cur.sun.lerp(tmpColor.setHex(P.sun),k);
+  cur.si+=(P.si*(S.weather==='rain'?.45:1)-cur.si)*k;
+  cur.ai+=(P.ai-cur.ai)*k;
+  scene.fog.color.copy(cur.fog);
+  sunL.color.copy(cur.sun); sunL.intensity=cur.si; ambL.intensity=cur.ai;
+  targetSunPos.set(P.sunPos[0],P.sunPos[1],P.sunPos[2]);
+  sunL.position.lerp(targetSunPos,k);
+  sunMesh.position.copy(sunL.position).multiplyScalar(1.6);
+  sunMesh.material.color.copy(cur.sun);
+  sunMesh.visible=!P.star;
+  moonMesh.visible=P.star; stars.visible=P.star;
+  lampHeads.forEach(m=>m.color.setHex(P.lamp?0xffd98a:0x555560));
+  lampPts.forEach(l=>l.intensity=P.lamp?.9:0);
+  winMats.forEach(m=>m.color.setHex(P.win?0xffd98a:0x2a2f3a));
+
+  /* 雨 */
+  if(rainPts.visible){
+    const pos=rainPts.geometry.attributes.position;
+    for(let i=0;i<pos.count;i++){
+      let y=pos.getY(i)-dt*16;
+      if(y<0)y=22;
+      pos.setY(i,y);
+    }
+    pos.needsUpdate=true;
+  }
+
+  /* 蒸汽 */
+  if(steamG.visible){
+    steamG.children.forEach(s=>{
+      s.position.y+=dt*.9;
+      s.material.opacity=Math.max(0,.65-(s.position.y-1.3)/1.6);
+      if(s.position.y>2.9){s.position.y=1.3;s.material.opacity=.6;}
+      s.scale.setScalar(1+(s.position.y-1.3)*.5);
+    });
+  }
+
+  /* 角色行为 */
+  if(mode==='ride'){
+    bike.visible=true;
+    char.position.x+=rideDir*dt*6.5;
+    if(char.position.x>13)rideDir=-1;
+    if(char.position.x<-13)rideDir=1;
+    char.position.set(clamp(char.position.x,-13,13),.62,0);
+    char.rotation.y=rideDir>0?Math.PI/2:-Math.PI/2;
+    bike.position.set(char.position.x,0,0);
+    bike.rotation.y=rideDir>0?0:Math.PI;
+    wheelF.rotation.z-=dt*9*rideDir;
+    wheelB.rotation.z-=dt*9*rideDir;
+  }else{
+    bike.visible=false;
+    if(mode==='sleep'){
+      char.rotation.x=-Math.PI/2;
+      char.position.set(bedG.position.x,.78,bedG.position.z);
+    }else if(mode==='sit'){
+      char.rotation.x=0;
+      char.position.set(-10,.3,10); char.rotation.y=Math.PI*.85;
+    }else{
+      char.rotation.x=0;
+      char.position.y=Math.sin(t*2)*.025;
+    }
+  }
+
+  /* 相机 */
+  camera.position.lerp(camPos,1-Math.pow(.006,dt));
+  curLook.lerp(camLookT,1-Math.pow(.006,dt));
+  camera.lookAt(curLook);
+
+  renderer.render(scene,camera);
+}
+
+function setCam(name){
+  const c=CAMS[name];
+  camPos.set(c.p[0],c.p[1],c.p[2]);
+  camLookT.set(c.l[0],c.l[1],c.l[2]);
+}
+
+/* ============ HUD ============ */
+function log(msg,cls){
+  const d=document.createElement('div'); d.className='l';
+  d.innerHTML='<span class="t">D'+S.day+'·'+SLOTS[S.slot]+'</span><span>'+(cls?'<span class="'+cls+'">'+msg+'</span>':msg)+'</span>';
+  const box=$('log'); box.prepend(d);
+  while(box.children.length>9)box.lastChild.remove();
+}
+let speakTimer=null;
+function speak(t){
+  const el=$('thought'); el.textContent=t; el.classList.add('show');
+  clearTimeout(speakTimer);
+  speakTimer=setTimeout(()=>el.classList.remove('show'),2200);
+}
 function render(){
-  $('day').textContent=S.day; $('slot').textContent=SLOTS[S.slot];
+  $('day').textContent=S.day;
+  $('slotName').textContent=SLOTS[S.slot];
+  $('weather').textContent=S.weather==='rain'?'🌧 下雨':'☀ 晴';
   $('dayfill').style.width=(S.day/GAME_DAYS*100)+'%';
-  $('v-hunger').textContent=S.hunger;$('b-hunger').style.width=S.hunger+'%';
+  $('lvRun').textContent=lvRun(); $('lvWork').textContent=lvWork();
+  $('v-hunger').textContent=Math.round(S.hunger);
+  $('b-hunger').style.width=clamp(S.hunger,0,100)+'%';
   $('b-hunger').style.background=S.hunger<25?'var(--bad)':S.hunger<50?'var(--warn)':'var(--acc2)';
-  $('v-energy').textContent=S.energy;$('b-energy').style.width=S.energy+'%';
+  $('v-energy').textContent=Math.round(S.energy);
+  $('b-energy').style.width=clamp(S.energy,0,100)+'%';
   $('b-energy').style.background=S.energy<25?'var(--bad)':S.energy<50?'var(--warn)':'var(--acc)';
-  $('v-health').textContent=S.health;$('b-health').style.width=S.health+'%';
+  $('v-health').textContent=Math.round(S.health);
+  $('b-health').style.width=clamp(S.health,0,100)+'%';
   $('b-health').style.background=S.health<30?'var(--bad)':S.health<55?'var(--warn)':'var(--acc2)';
-  $('v-money').textContent=S.money;$('b-money').style.width=moneyPct()+'%';
+  $('v-money').textContent=Math.round(S.money);
+  $('b-money').style.width=clamp(Math.round(S.money/300*100),2,100)+'%';
   $('b-money').style.background=S.money<40?'var(--bad)':'#8fb0c9';
-  $('v-stress').textContent=S.stress;$('b-stress').style.width=S.stress+'%';
+  $('v-stress').textContent=Math.round(S.stress);
+  $('b-stress').style.width=clamp(S.stress,0,100)+'%';
   $('b-stress').style.background=S.stress>70?'var(--bad)':'var(--warn)';
-  $('v-work').textContent=S.work;$('b-work').style.width=S.work+'%';
-  $('scenetxt').textContent=SLOTS[S.slot]+(S.day===1&&S.slot===0?' · 新的一天':' · 第 '+S.day+' 天');
-  const sky=$('skyicon'); sky.className=(S.slot===4||S.slot===0||S.slot===3)?'moon':'sun';
-  renderPerson();
+  $('v-work').textContent=Math.round(S.work);
+  $('b-work').style.width=clamp(S.work,0,100)+'%';
+  $('b-work').style.background='#b08fcf';
 }
-function renderPerson(){
-  const hurt=S.health<35, tired=S.energy<25, broke=S.money<40;
-  const mood=hurt?'hurt':(tired?'tired':(broke?'worried':'ok'));
-  const body=hurt?'#b07a66':'#d9a06b';
-  const face=mood==='ok'
-    ? '<path d="M5 19c1-1.4 2.6-2 4-2s3 .6 4 2" fill="none" stroke="#3a2430" stroke-width="1.4" stroke-linecap="round"/>'
-    : mood==='tired'
-    ? '<path d="M5 18.5h8" stroke="#3a2430" stroke-width="1.4" stroke-linecap="round"/>'
-    : '<path d="M6 21c2.6-1.6 5.4-1.6 8 0" fill="none" stroke="#3a2430" stroke-width="1.4" stroke-linecap="round"/>';
-  const eyes=mood==='tired'
-    ? '<path d="M6 11l3 0M10 11l3 0" stroke="#3a2430" stroke-width="1.3" stroke-linecap="round"/>'
-    : '<circle cx="7.5" cy="10.5" r="1.2" fill="#3a2430"/><circle cx="12.5" cy="10.5" r="1.2" fill="#3a2430"/>';
-  $('person').innerHTML='<svg viewBox="0 0 20 28">'
-    +'<circle cx="10" cy="6.5" r="4.6" fill="'+body+'"/>'
-    +'<path d="M2.5 27V18c0-3 3.2-5.2 7.5-5.2s7.5 2.2 7.5 5.2v9" fill="'+body+'"/>'
-    +'<path d="M2.5 20l-1.6 3M17.5 20l1.6 3" stroke="#8a5a40" stroke-width="1.2"/>'
-    +eyes+face+'</svg>';
-}
-function speak(t){const el=$('thought');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1600);}
+
+/* ============ 游戏逻辑 ============ */
 function checkDeath(){
-  if(S.end)return;
-  if(S.hunger<=0){S.hunger=0;S.end=true;log('饱腹见底，倒下了','dmg');speak('撑不住了…');endGame('饿垮了','饥饿到头，身体先撑不住了。第 '+S.day+' 天。');return;}
-  if(S.energy<=0){S.energy=0;S.end=true;log('精力耗尽，倒下了','dmg');speak('实在走不动了…');endGame('累垮了','连续透支，再也站不起来。第 '+S.day+' 天。');return;}
-  if(S.health<=0){S.health=0;S.end=true;log('健康归零，倒下了','dmg');speak('身体在报警…');endGame('身体垮了','长期透支，健康被自己耗光了。第 '+S.day+' 天。');return;}
+  if(S.end)return true;
+  let death=null;
+  if(S.hunger<=0){S.hunger=0;death=['饿垮了','饥饿到头，身体先撑不住了。'];}
+  else if(S.energy<=0){S.energy=0;death=['累垮了','连续透支，再也站不起来。'];}
+  else if(S.health<=0){S.health=0;death=['身体垮了','长期透支，健康被自己耗光了。'];}
+  if(death){S.end=true;log(death[1],'dmg');endGame(death[0],death[1]+' 第 '+S.day+' 天。');return true;}
+  return false;
 }
 function endGame(title,text){
   S.end=true;
   $('ovtitle').textContent=title; $('ovtext').textContent=text;
-  $('s-day').textContent=S.day; $('s-money').textContent=S.money; $('s-night').textContent=S.nightCount;
+  $('s-day').textContent=Math.min(S.day,GAME_DAYS);
+  $('s-money').textContent=Math.round(S.money); $('s-night').textContent=S.nightCount;
+  $('ovskill').textContent='跑单 Lv.'+lvRun()+' · 创作 Lv.'+lvWork();
   $('overlay').classList.add('show');
 }
-function finish(win){
-  S.end=true;
-  const verdict=win?(S.money>=120?'活得还行，攒下了'+S.money+'块。':(S.health>=60?'钱不多，但身体没垮，这已经是赢了。':'勉强活着，身体在透支边缘。')):'';
+function finish(){
   let rating;
   if(S.health>=70&&S.money>=100)rating='稳扎稳打 · 作息和口袋都守住了';
   else if(S.health>=50)rating='熬过来了 · 健康还行，但可以更好';
   else rating='伤痕累累 · 活着，但代价太大';
-  $('ovtitle').textContent=win?('活过第 30 天 · '+rating):'结局';
-  $('ovtext').textContent=win?('三十天，你靠着一次次跑单活了下来。攒下 '+S.money+' 块，熬了 '+S.nightCount+' 个夜。'+verdict):verdict;
-  $('s-day').textContent=GAME_DAYS; $('s-money').textContent=S.money; $('s-night').textContent=S.nightCount;
-  $('overlay').classList.add('show');
+  const verdict=S.money>=120?'活得还行，攒下了 '+Math.round(S.money)+' 块。':(S.health>=60?'钱不多，但身体没垮，这已经是赢了。':'勉强活着，身体在透支边缘。');
+  endGame('活过第 30 天 · '+rating,'三十天，你靠一次次跑单活了下来。攒下 '+Math.round(S.money)+' 块，熬了 '+S.nightCount+' 个夜。'+verdict);
+}
+function newDay(){
+  S.hunger-=6-(S.items.thermos?3:0);
+  S.energy-=5;
+  if(S.items.earphone)S.stress-=5;
+  if(S.items.gym)S.health+=3;
+  if(S.hunger<=20){S.health-=4;log('吃不上饭，体力在流失','dmg');}
+  if(S.money<=0){S.stress+=10;log('钱包见底，压力上来了','dmg');}
+  S.weather=Math.random()<.3?'rain':'sun';
+  rainPts.visible=(S.weather==='rain');
+  if(S.weather==='rain')log('今天下雨，跑单更难了','dmg');
 }
 function advance(){
-  if(S.slot===4 && S.nightAction!=='sleep'){S.nightTmp++; S.nightCount++; log('深夜还在硬撑，熬了个夜','dmg');}
+  if(S.slot===4&&S.nightAction!=='sleep'){S.nightTmp++;S.nightCount++;log('深夜还在硬撑，熬了个夜','dmg');}
   S.slot++;
   if(S.slot>=5){
-    S.slot=0; S.day++;
-    if(S.nightTmp>0){S.energy-=Math.min(28,25+5*S.nightTmp);S.health-=6*S.nightTmp;S.stress+=12*S.nightTmp;log('昨晚熬夜，第二天头晕眼花（精力-、健康-）','dmg');speak('又熬夜了，身体在记这笔账…');}
+    S.slot=0;S.day++;
+    if(S.nightTmp>0){
+      S.energy-=Math.min(28,25+5*S.nightTmp);S.health-=6*S.nightTmp;S.stress+=12*S.nightTmp;
+      log('昨晚熬夜，今天头晕眼花','dmg');speak('身体在记这笔账…');
+    }
     S.nightTmp=0;
-    S.hunger-=6; S.energy-=5;
-    if(S.hunger<=20){S.health-=4;log('吃不上饭，体力在流失','dmg');}
-    if(S.money<=0){S.stress+=10;log('钱包见底，压力上来了','dmg');}
-    if(S.health<30)log('身体状况很差，该去看医生了','dmg');
-    if(S.day>GAME_DAYS){finish(true);return;}
+    newDay();
+    if(S.day>GAME_DAYS){render();finish();return;}
   }
-  checkDeath();
-  render();
+  S.hunger=clamp(S.hunger,0,100);S.energy=clamp(S.energy,0,100);
+  S.health=clamp(S.health,0,100);S.stress=clamp(S.stress,0,100);
+  if(!checkDeath())render();
 }
-S.nightTmp=0;
-function doRun(){
-  S.money+=52; S.energy-=20; S.hunger-=17; S.stress+=12; S.health-=2;
-  log('跑单，进账 52 元','up');
-  if(S.hunger<=20){S.health-=14;log('饿着跑单，一阵晕眩（低血糖）','dmg');speak('眼前发黑…');}
-  else if(Math.random()<0.15){S.health-=5;log('风大路滑，摔了一跤','dmg');}
-  S.nightAction='run'; advance();
+
+/* ---- 随机事件 ---- */
+function rollEvent(after){
+  const r=Math.random();
+  if(after==='run'){
+    if(lvRun()>=5&&r<.04){log('老骑手的预判：躲过了一张罚单','up');return;}
+    if(r<.09){S.money-=30;S.stress+=6;log('逆行被交警拦下，罚单 -30 元','dmg');speak('心疼…');}
+    else if(r<.17){S.money-=15;S.stress+=8;log('顾客差评：汤洒了，扣款 -15 元','dmg');speak('有苦说不出');}
+    else if(r<.25){const tip=S.weather==='rain'?30:20;S.money+=tip;log('顾客打赏 +'+tip+' 元','up');speak('遇到好心人了');}
+    else if(r<.32&&S.weather==='rain'&&!S.items.raincoat){S.health-=8;log('雨天路滑，摔了一跤（健康 -8）','dmg');speak('疼…');}
+  }else if(after==='eat'&&r<.1){
+    S.hunger=clamp(S.hunger+8,0,100);log('老板多送了个鸡腿，饱腹 +8','up');speak('今天运气不错');
+  }else if(after==='work'&&r<.15){
+    S.work=clamp(S.work+10,0,100);log('灵感来了，作品进度 +10','up');speak('这条感觉能火');
+  }
 }
-function doEat(){
-  if(S.money<12){log('钱不够吃这顿','dmg');speak('连饭都吃不起…');return;}
-  S.money-=12; S.hunger+=40; S.health+=4; S.stress-=5;
-  S.hunger=clamp(S.hunger,0,100);
-  log('吃了顿热乎的，饱腹+','up');
-  S.nightAction='eat'; advance();
+
+/* ---- 动作 ---- */
+const ACTIONS=[
+  {id:'run', name:'🛵 跑单', e:'+钱 · 耗精力/饱腹 · 加压力', cam:'ride',
+   start(){char.position.set(-13,.62,0);rideDir=1;char.rotation.y=Math.PI/2;mode='ride';setCam('ride');speak(S.weather==='rain'?'雨天单多，路也难走…':'接单了，出发！');},
+   apply(){
+     let pay=45+lvRun()*3+(S.items.bike?15:0);
+     if(S.weather==='rain'&&!S.items.raincoat)pay=Math.floor(pay*.8);
+     S.money+=pay;
+     S.energy-=S.items.bike?14:20; S.hunger-=16; S.stress+=11; S.health-=2;
+     S.runExp++;
+     log('跑单，进账 '+pay+' 元','up');
+     if(S.hunger<=20){S.health-=14;log('饿着跑单，一阵晕眩（低血糖）','dmg');speak('眼前发黑…');}
+     rollEvent('run');
+   }},
+  {id:'eat', name:'🍜 吃一顿', e:'-12元 · 饱腹+ · 健康+', cam:'stall',
+   start(){char.position.set(10,0,7.4);char.rotation.y=0;mode='eat';steamG.visible=true;setCam('stall');speak('老板，来碗面');},
+   apply(){
+     steamG.visible=false;
+     if(S.money<12){log('钱不够吃这顿','dmg');speak('连饭都吃不起…');return false;}
+     S.money-=12;S.hunger+=42;S.health+=4;S.stress-=5;
+     log('吃了顿热乎的，饱腹 +42','up');
+     rollEvent('eat');
+   }},
+  {id:'sleep', name:'😴 睡觉', e:'回精力 · 耗饱腹 · 深夜睡才不熬夜', cam:'home',
+   start(){mode='sleep';setCam('home');speak('晚安…');},
+   apply(){
+     const night=(S.slot===4);
+     S.energy+=night?70:35;
+     S.hunger-=22;S.stress-=8+(S.items.earphone?4:0);
+     S.health+=4+(S.items.gym?4:0);
+     log(night?'睡了一整夜，精力大增':'补了个觉，精力 +35','up');
+     if(!night&&S.energy<70)log('白天补觉，晚上更难睡着','dmg');
+   }},
+  {id:'rest', name:'🌳 休息', e:'降压力 · 略耗精力', cam:'park',
+   start(){mode='sit';setCam('park');speak('喘口气…');},
+   apply(){
+     S.stress-=14+(S.items.earphone?8:0);S.energy-=6;
+     log('在公园坐了一会儿，压力下降','up');
+     if(S.stress>60)log('心里乱，休息也歇不踏实','dmg');
+   }},
+  {id:'doc', name:'🏥 看医生', e:'-45元 · 健康+', cam:'hospital',
+   start(){char.position.set(13,0,-8);char.rotation.y=Math.PI;mode='doc';setCam('hospital');speak('还是得来看看…');},
+   apply(){
+     if(S.money<45){log('钱不够看病','dmg');speak('看不起病…');return false;}
+     S.money-=45;S.health+=34;S.stress-=8;
+     log('看了医生，健康 +34','up');
+   }},
+  {id:'work', name:'💻 做内容', e:'作品+ · 耗精力/饱腹 · 满 100 结算', cam:'home',
+   start(){char.position.set(-11,0,-5.5);char.rotation.y=Math.PI;mode='work';laptopG.visible=true;setCam('home');speak('再剪一条…');},
+   apply(){
+     laptopG.visible=false;
+     const prog=26+lvWork()*4+(S.items.pc?12:0);
+     S.work+=prog; S.energy-=16; S.hunger-=9; S.workExp++;
+     if(S.work>=100){S.work=0;const pay=200+lvWork()*20;S.money+=pay;log('作品上线，进账 '+pay+' 元','up');speak('作品终于上线了');}
+     else log('做了一版内容，进度 +'+prog,'up');
+     rollEvent('work');
+   }}
+];
+
+let acting=false;
+function doAction(a){
+  if(acting||S.end)return;
+  acting=true;document.body.classList.add('busy');
+  S.nightAction=a.id;
+  a.start();
+  setTimeout(()=>{
+    const ok=a.apply();
+    if(ok!==false)advance();else render();
+    acting=false;document.body.classList.remove('busy');
+  },2400);
 }
-function doSleep(){
-  const night=(S.slot===4); const gain=night?60:35;
-  S.nightAction='sleep';
-  S.energy+=gain; S.energy=clamp(S.energy,0,100);
-  S.hunger-=22; S.stress-=8; S.health+=4; S.health=clamp(S.health,0,100);
-  log(night?'睡了一整夜，精力+':'补了个觉，精力+'+(S.energy),'up');
-  if(!night && S.energy<70)log('白天补觉，晚上更难睡着','dmg');
-  advance();
-}
-function doRest(){
-  S.stress-=14; S.energy-=7;
-  log('坐了一会儿，压力-','up');
-  if(S.stress>60)log('心里乱，休息也歇不踏实','dmg');
-  S.nightAction='rest'; advance();
-}
-function doDoc(){
-  if(S.money<45){log('钱不够看病','dmg');speak('连医生都看不上…');return;}
-  S.money-=45; S.health+=34; S.stress-=8; S.health=clamp(S.health,0,100);
-  log('看了医生，健康+','up');
-  S.nightAction='doc'; advance();
-}
-function doWork(){
-  S.work+=26; S.energy-=16; S.hunger-=9;
-  if(S.work>=100){S.work=0;S.money+=200;log('作品上线，进账 200 元','up');speak('作品终于上线了');}
-  else log('做了一版内容，进度+26','up');
-  S.nightAction='work'; advance();
-}
-function renderActions(){
-  const box=$('actions'); box.innerHTML='';
-  ACTIONS.forEach(a=>{
-    const d=document.createElement('div'); d.className='act';
-    d.innerHTML='<div class="n">'+a.icon+''+a.name+'</div><div class="e">'+a.cost+'</div>';
-    d.onclick=()=>{ if(S.end)return; window[a.fn](); renderActions(); };
-    box.appendChild(d);
+
+/* ---- 商店 ---- */
+const ITEMS=[
+  {key:'raincoat',icon:'🌂',name:'雨衣',price:60,desc:'雨天跑单不再减收入，也不会摔伤'},
+  {key:'thermos',icon:'🥤',name:'保温杯',price:45,desc:'每天饱腹衰减 -3，随时有热水喝'},
+  {key:'earphone',icon:'🎧',name:'降噪耳机',price:120,desc:'每天压力 -5，休息和睡觉降压更多'},
+  {key:'gym',icon:'🏋️',name:'健身月卡',price:200,desc:'每天健康 +3，睡觉额外回健康'},
+  {key:'bike',icon:'🛵',name:'二手电动车',price:300,desc:'跑单收入 +15 元，精力消耗更少'},
+  {key:'pc',icon:'💻',name:'二手电脑',price:500,desc:'做内容进度 +12，作品更值钱'}
+];
+function renderShop(){
+  $('shopMoney').textContent=Math.round(S.money);
+  const box=$('shopItems');box.innerHTML='';
+  ITEMS.forEach(it=>{
+    const owned=S.items[it.key];
+    const d=document.createElement('div');
+    d.className='shopitem'+(owned?' owned':'');
+    d.innerHTML='<div class="ic">'+it.icon+'</div><div class="inf"><div class="nm">'+it.name+'</div><div class="ds">'+it.desc+'</div></div>';
+    const btn=document.createElement('button');
+    btn.textContent=owned?'已拥有':'¥'+it.price;
+    btn.disabled=owned||S.money<it.price;
+    btn.onclick=()=>{
+      if(S.items[it.key]||S.money<it.price)return;
+      S.money-=it.price;S.items[it.key]=true;
+      log('买下了'+it.name,'up');speak(it.name+'，到手！');
+      renderShop();render();
+    };
+    d.appendChild(btn);box.appendChild(d);
   });
+}
+
+/* ---- 初始化 UI ---- */
+function renderActions(){
+  const boxEl=$('actions');boxEl.innerHTML='';
+  ACTIONS.forEach(a=>{
+    const d=document.createElement('div');d.className='act';
+    d.innerHTML='<div class="n">'+a.name+'</div><div class="e">'+a.e+'</div>';
+    d.onclick=()=>doAction(a);
+    boxEl.appendChild(d);
+  });
+  const shop=document.createElement('div');shop.className='act shop';
+  shop.innerHTML='<div class="n">🛒 商店</div><div class="e">花钱买省心 · 装备改变人生</div>';
+  shop.onclick=()=>{if(S.end)return;renderShop();$('shopModal').classList.add('show');};
+  boxEl.appendChild(shop);
+}
+$('shopClose').onclick=()=>$('shopModal').classList.remove('show');
+$('shopModal').addEventListener('click',e=>{if(e.target.id==='shopModal')$('shopModal').classList.remove('show');});
+$('restartBtn').onclick=()=>location.reload();
+setTimeout(()=>{$('hint').style.opacity=0;},6000);
+
+/* ---- 启动 ---- */
+try{
+  init3D();
+}catch(e){
+  document.getElementById('fallback').style.display='flex';
 }
 renderActions();
 render();
+if(rainPts)rainPts.visible=false;
+log('第 1 天开始了。目标：活过 30 天。');
+speak('新的一天，先想想怎么活。');
+}
 </script>
 </body>
 </html>
